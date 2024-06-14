@@ -14,6 +14,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#include "ike_nav_msgs/srv/get_path.hpp"
 
 /*
 #include <ros/ros.h>
@@ -44,7 +45,6 @@ public:
 
 	void runThreads(void);
 private:
-	std::vector<Action> *actions_;
 	std::shared_ptr<ValueIteratorLocal> vi_;
 	rclcpp::TimerBase::SharedPtr decision_timer_;
 	rclcpp::TimerBase::SharedPtr value_pub_timer_;
@@ -88,6 +88,12 @@ private:
 	bool online_;
 
 	int cost_drawing_threshold_;
+
+	//additional
+	void astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+	nav_msgs::msg::OccupancyGrid map_for_astar;
+	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_cost_map_;
+	rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
 };
 
 }
