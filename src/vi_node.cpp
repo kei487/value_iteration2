@@ -74,7 +74,7 @@ void ViNode::setMap(void)
 				if (vi_->setMapWithOccupancyGrid(res.get()->map,
 					theta_cell_num, safety_radius, safety_radius_penalty,
 					goal_margin_radius, goal_margin_theta)) {
-					map_for_astar = res.get()->map;
+					//map_for_astar_ = res.get()->map;
 					break;
 				}
 			} else {
@@ -130,7 +130,7 @@ void ViNode::setCommunication(void)
 	}
 
 	pub_value_function_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/value_function", 2);
-	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("costmap_2d", 2);
+	//pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("costmap_2d", 2);
 
 	decision_timer_ = this->create_wall_timer(100ms, std::bind(&ViNode::decision, this));
 	value_pub_timer_ = this->create_wall_timer(1500ms, std::bind(&ViNode::pubValueFunction, this));
@@ -204,7 +204,7 @@ void ViNode::executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg
 	RCLCPP_INFO(get_logger(), "GOAL: %lf %lf %d", msg->pose.position.x, msg->pose.position.y, t);
 	vi_->setGoal(msg->pose.position.x, msg->pose.position.y, t);
 	RCLCPP_INFO(get_logger(), "START!!!");
-	astar(msg);
+	//astar(msg);
 	/*
 	vector<thread> ths;
 	for(int t=0; t<vi_->thread_num_; t++){
@@ -216,13 +216,13 @@ void ViNode::executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg
 		thread(&ValueIteratorLocal::localValueIterationWorker, vi_.get()).detach();
 		*/
 }
-
-void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg){
-
-	RCLCPP_INFO(get_logger(), "START A-STAR!!!");
+/*
+void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
+{
+	RCLCPP_INFO(get_logger(), "START A*!!!");
 
   //publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
-	pub_cost_map_->publish(map_for_astar);
+	pub_cost_map_->publish(map_for_astar_);
 
   //service client /get_path ike_nav_msgs::srv::GetPath
 	get_path_srv_client_ =
@@ -239,16 +239,20 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg){
 
 	//set request
 	auto request = std::make_shared<ike_nav_msgs::srv::GetPath::Request>();
+
 	request->goal.pose.position.x = msg->pose.position.x;
 	request->goal.pose.position.y = msg->pose.position.y;
+
 	try{
 		tf_buffer_->canTransform("map", "base_link", rclcpp::Time(0), rclcpp::Duration::from_seconds(0.1));
-		geometry_msgs::msg::TransformStamped trans = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+		geometry_msgs::msg::TransformStamped trans =
+					 tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
 		request->start.pose.position.x  = trans.transform.translation.x;
 		request->start.pose.position.y = trans.transform.translation.y;
 	}catch(tf2::TransformException &e){
 		RCLCPP_WARN(this->get_logger(),"%s", e.what());
 	}
+
 	//set response
 	using ServiceResponseFuture = 
 		rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedFuture;
@@ -257,14 +261,19 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg){
     	auto response = future.get();
     	RCLCPP_INFO(this->get_logger(), "Path received");
 	  	//make thread for VI
-
-	  	RCLCPP_INFO(get_logger(), "A-STAR DONE!!!");
+		for(auto i : response->path.poses) 
+			RCLCPP_INFO(get_logger(), 
+				"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
+	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
 	};
+
 	//call service
 	auto future_result = 
 		get_path_srv_client_->async_send_request(request, response_received_callback);
-}
+	
 
+}
+// */
 void ViNode::pubValueFunction(void)
 {
 	RCLCPP_INFO(get_logger(), "PUBLISH VALUE FUNC");

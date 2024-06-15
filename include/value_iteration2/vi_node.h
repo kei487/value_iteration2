@@ -14,7 +14,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-#include "ike_nav_msgs/srv/get_path.hpp"
+//#include "ike_nav_msgs/srv/get_path.hpp"
 
 /*
 #include <ros/ros.h>
@@ -89,11 +89,11 @@ private:
 
 	int cost_drawing_threshold_;
 
-	//additional
-	void astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
-	nav_msgs::msg::OccupancyGrid map_for_astar;
-	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_cost_map_;
-	rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
+	//additional astar
+	//void astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+	//nav_msgs::msg::OccupancyGrid map_for_astar_;
+	//rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_cost_map_;
+	//rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
 };
 
 }
