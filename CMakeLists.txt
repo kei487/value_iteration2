@@ -8,7 +8,8 @@ endif()
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
-# find_package(ike_nav_msgs REQUIRED)
+find_package(ike_nav_msgs REQUIRED)
+find_package(ike_nav_parameters REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -23,8 +24,12 @@ ament_auto_add_executable(vi_node
   src/StateTransition.cpp
   src/vi_node.cpp
 )
+ament_auto_add_executable(planner
+  src/Planner.cpp
+)
 
 install(TARGETS vi_node DESTINATION lib/${PROJECT_NAME})
+install(TARGETS planner DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY maps DESTINATION share/${PROJECT_NAME})

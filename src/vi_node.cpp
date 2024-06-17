@@ -68,17 +68,19 @@ void ViNode::setMap(void)
 		
 			auto req = std::make_shared<nav_msgs::srv::GetMap::Request>();
 			auto res = client->async_send_request(req);
-			
+			try{
 			if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), res) 
 					== rclcpp::FutureReturnCode::SUCCESS) {
-				if (vi_->setMapWithOccupancyGrid(res.get()->map,
+				if (vi_->setMapWithOccupancyGrid(map_for_astar_ = res.get()->map,
 					theta_cell_num, safety_radius, safety_radius_penalty,
 					goal_margin_radius, goal_margin_theta)) {
-					//map_for_astar_ = res.get()->map;
 					break;
 				}
 			} else {
 				RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call map service");
+			}
+			}catch (const std::future_error& e) {
+				RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Future error(setMap): %s", e.what());
 			}
 			sleep(1);
 		}
@@ -130,7 +132,7 @@ void ViNode::setCommunication(void)
 	}
 
 	pub_value_function_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/value_function", 2);
-	//pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("costmap_2d", 2);
+	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("costmap_2d", 2);
 
 	decision_timer_ = this->create_wall_timer(100ms, std::bind(&ViNode::decision, this));
 	value_pub_timer_ = this->create_wall_timer(1500ms, std::bind(&ViNode::pubValueFunction, this));
@@ -204,7 +206,8 @@ void ViNode::executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg
 	RCLCPP_INFO(get_logger(), "GOAL: %lf %lf %d", msg->pose.position.x, msg->pose.position.y, t);
 	vi_->setGoal(msg->pose.position.x, msg->pose.position.y, t);
 	RCLCPP_INFO(get_logger(), "START!!!");
-	//astar(msg);
+	astar(msg);
+	
 	/*
 	vector<thread> ths;
 	for(int t=0; t<vi_->thread_num_; t++){
@@ -216,7 +219,7 @@ void ViNode::executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg
 		thread(&ValueIteratorLocal::localValueIterationWorker, vi_.get()).detach();
 		*/
 }
-/*
+
 void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 {
 	RCLCPP_INFO(get_logger(), "START A*!!!");
@@ -250,7 +253,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 		request->start.pose.position.x  = trans.transform.translation.x;
 		request->start.pose.position.y = trans.transform.translation.y;
 	}catch(tf2::TransformException &e){
-		RCLCPP_WARN(this->get_logger(),"%s", e.what());
+		RCLCPP_WARN(this->get_logger(),"current position error:%s", e.what());
 	}
 
 	//set response
@@ -273,7 +276,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	
 
 }
-// */
+
 void ViNode::pubValueFunction(void)
 {
 	RCLCPP_INFO(get_logger(), "PUBLISH VALUE FUNC");
@@ -301,7 +304,7 @@ void ViNode::decision(void)
 		y_ = trans.transform.translation.y;
 		yaw_ = tf2::getYaw(trans.transform.rotation);
 	}catch(tf2::TransformException &e){
-		RCLCPP_WARN(this->get_logger(),"%s", e.what());
+		RCLCPP_WARN(this->get_logger(),"error in decision:%s", e.what());
 	}
 
 	RCLCPP_INFO(this->get_logger(),"X: %lf, Y: %lf, T: %lf", x_, y_, yaw_);
