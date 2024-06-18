@@ -11,6 +11,7 @@
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include "rclcpp/rclcpp.hpp"
 #include <grid_map_msgs/srv/get_grid_map.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 
 namespace value_iteration2 {
 
@@ -26,6 +27,7 @@ protected:
 public:
 	void setGoal(double goal_x, double goal_y, int goal_t);
 	void valueIterationWorker(unsigned int times, int id);
+	void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp);
 /* calculation */
 protected: 
 	int toIndex(int ix, int iy, int it);

@@ -10,14 +10,15 @@ namespace ike_nav
 
 IkePlanner::IkePlanner(const rclcpp::NodeOptions & options) : Node("ike_planner", options)
 {
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initialize start!");
   getParam();
 
   initPublisher();
   initSubscriber();
   initServiceServer();
   initServiceClient();
-
-  getCostMap2D();
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initialize done!");
+  //getCostMap2D();
 }
 
 void IkePlanner::getParam()
@@ -47,7 +48,9 @@ void IkePlanner::initSubscriber()
   auto costmap_2d_callback = [this](const nav_msgs::msg::OccupancyGrid::UniquePtr msg) {
     // RCLCPP_INFO(
     //   this->get_logger(), "Subscribed message at address: %p", static_cast<void *>(msg.get()));
+    RCLCPP_INFO(this->get_logger(), "IkePlanner get topic!");
     this->obstacle_map_ = *msg;
+    initPlanner();    
   };
 
   rclcpp::SubscriptionOptions options;
@@ -65,11 +68,23 @@ void IkePlanner::initServiceServer()
     (void)request_header;
     // clang-format off
     RCLCPP_INFO(this->get_logger(), "IkePlanner planning start");
+    search_map_ = obstacle_map_;
+    request->start.pose.position.x -= obstacle_map_.info.origin.position.x;
+    request->start.pose.position.y -= obstacle_map_.info.origin.position.y;
+    request->goal.pose.position.x -= obstacle_map_.info.origin.position.x;
+    request->goal.pose.position.y -= obstacle_map_.info.origin.position.y;
+    search_map_.info.origin.position.x -= obstacle_map_.info.origin.position.x;
+    search_map_.info.origin.position.y -= obstacle_map_.info.origin.position.y;
     response->path = planning(
       request->start.pose.position.x, request->start.pose.position.y, 
       request->goal.pose.position.x, request->goal.pose.position.y);
+    RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
+    for(auto &i : response->path.poses){
+      i.pose.position.x += obstacle_map_.info.origin.position.x;
+      i.pose.position.y += obstacle_map_.info.origin.position.y;
+      RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf",i.pose.position.x, i.pose.position.y);
+    }
     RCLCPP_INFO(this->get_logger(), "IkePlanner planning done");
-    // clang-format on
   };
   get_path_srv_ = create_service<ike_nav_msgs::srv::GetPath>("get_path", get_path);
 }
@@ -82,7 +97,7 @@ void IkePlanner::initServiceClient()
 
 void IkePlanner::initPlanner()
 {
-  RCLCPP_INFO(this->get_logger(), "IkePlanner initialized");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initializing start");
   resolution_ = obstacle_map_.info.resolution;
   robot_radius_ = 1.0;
   min_x_ = min_y_ = 0;
@@ -90,7 +105,7 @@ void IkePlanner::initPlanner()
   max_y_ = y_width_ = obstacle_map_.info.height;
   motion_ = getMotionModel();
   search_map_ = obstacle_map_;
-  RCLCPP_INFO(this->get_logger(), "IkePlanner initialized done");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initializing done");
 }
 
 std::vector<std::tuple<int32_t, int32_t, uint8_t>> IkePlanner::getMotionModel()
@@ -109,14 +124,17 @@ std::vector<std::tuple<int32_t, int32_t, uint8_t>> IkePlanner::getMotionModel()
 
 nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double gy)
 {
+  RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf, goal x:%lf y:%lf", sx,sy,gx,gy);
+  RCLCPP_INFO(this->get_logger(), "hight:%lf width:%lf", resolution_*x_width_, resolution_*y_width_);
   auto start_node = ike_nav::Node(calcXYIndex(sx), calcXYIndex(sy), 0.0, -1);
   auto goal_node = ike_nav::Node(calcXYIndex(gx), calcXYIndex(gy), 0.0, -1);
 
   std::map<uint32_t, ike_nav::Node> open_set, closed_set;
   open_set.insert(std::make_pair(calcGridIndex(start_node), start_node));
 
-  search_map_ = obstacle_map_;
-
+  //search_map_ = obstacle_map_;
+  RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
+  RCLCPP_INFO(this->get_logger(), "start loop");
   while (rclcpp::ok()) {
     if (open_set.size() == 0) {
       RCLCPP_ERROR(this->get_logger(), "Open set is empty");
@@ -161,7 +179,6 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
       auto n_id = calcGridIndex(node);
 
       if (!verifyNode(node)) continue;
-
       // check motion
       search_map_.data[n_id] = 50;
 
@@ -312,8 +329,14 @@ void IkePlanner::getCostMap2D()
     get_costmap_2d_map_srv_client_->async_send_request(request, response_received_callback);
 }
 
-int main(void){
-  rcp;
+}  // namespace ike_nav
+
+int main(int argc, char **argv)
+{
+	rclcpp::init(argc,argv);
+  rclcpp::NodeOptions opt;
+	auto node = std::make_shared<ike_nav::IkePlanner>(opt);
+	rclcpp::spin(node);
+	return 0;
 }
 
-}  // namespace ike_nav

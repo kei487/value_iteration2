@@ -107,7 +107,6 @@ void ValueIterator::setStateTransition(void)
 	for(auto &th : ths)
 		th.join();
 }
-
 void ValueIterator::cellDelta(double x, double y, double t, int &ix, int &iy, int &it)
 {
 	ix = (int)floor(fabs(x) / xy_resolution_);
@@ -191,6 +190,20 @@ uint64_t ValueIterator::valueIteration(State &s)
 	s.optimal_action_ = min_action;
 
 	return delta > 0 ? delta : -delta;
+}
+
+void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp)
+{
+	int n = 50;
+	int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
+    int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
+	int index;
+	for(int i=0;i<n;i++){
+		for(int t=0;t<cell_num_t_;t++){
+			index = toIndex(ix,iy,t);
+			valueIteration(states_[index]);
+		}
+	}
 }
 
 void ValueIterator::valueIterationWorker(unsigned int times, int id)

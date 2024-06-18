@@ -132,7 +132,7 @@ void ViNode::setCommunication(void)
 	}
 
 	pub_value_function_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/value_function", 2);
-	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("costmap_2d", 2);
+	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap_2d", 2);
 
 	decision_timer_ = this->create_wall_timer(100ms, std::bind(&ViNode::decision, this));
 	value_pub_timer_ = this->create_wall_timer(1500ms, std::bind(&ViNode::pubValueFunction, this));
@@ -229,7 +229,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 
   //service client /get_path ike_nav_msgs::srv::GetPath
 	get_path_srv_client_ =
-    	this->create_client<ike_nav_msgs::srv::GetPath>("get_path");
+    	this->create_client<ike_nav_msgs::srv::GetPath>("/get_path");
 
 	//wait service avairable
 	while(!get_path_srv_client_->wait_for_service(std::chrono::seconds(1))){
@@ -264,9 +264,12 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
     	auto response = future.get();
     	RCLCPP_INFO(this->get_logger(), "Path received");
 	  	//make thread for VI
-		for(auto i : response->path.poses) 
+		vector<thread> ths_a;
+		for(auto i : response->path.poses) {
 			RCLCPP_INFO(get_logger(), 
 				"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
+			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),i));
+		}
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
 	};
 

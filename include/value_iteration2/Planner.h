@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef VALUE_ITERATION_PLANNER_H__
+#ifndef VALUE_ITERATION_PLANNER_H__K
 #define VALUE_ITERATION_PLANNER_H__
 
 #include "ike_planner_parameter/ike_planner_parameter.hpp"
