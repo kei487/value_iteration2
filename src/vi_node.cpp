@@ -264,12 +264,12 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
     	auto response = future.get();
     	RCLCPP_INFO(this->get_logger(), "Path received");
 	  	//make thread for VI
-		vector<thread> ths_a;
 		for(auto i : response->path.poses) {
+			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),i));
 			RCLCPP_INFO(get_logger(), 
 				"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
-			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),i));
 		}
+		for(auto &t : ths_a) t.join();
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
 	};
 

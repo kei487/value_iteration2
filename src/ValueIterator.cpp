@@ -192,12 +192,13 @@ uint64_t ValueIterator::valueIteration(State &s)
 	return delta > 0 ? delta : -delta;
 }
 
-void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp)
+void ValueIterator::valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp)
 {
 	int n = 50;
 	int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
     int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
 	int index;
+	RCLCPP_INFO(rclcpp::get_logger("Aster"), "%d %d:A*!!!",ix,iy);
 	for(int i=0;i<n;i++){
 		for(int t=0;t<cell_num_t_;t++){
 			index = toIndex(ix,iy,t);

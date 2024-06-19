@@ -95,6 +95,7 @@ private:
 	nav_msgs::msg::OccupancyGrid map_for_astar_;
 	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_cost_map_;
 	rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
+	vector<thread> ths_a;
 };
 
 }
