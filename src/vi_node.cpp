@@ -203,9 +203,9 @@ void ViNode::executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg
 	double roll, pitch, yaw;
 	tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 	int t = (int)(yaw*180/M_PI);
-	RCLCPP_INFO(get_logger(), "GOAL: %lf %lf %d", msg->pose.position.x, msg->pose.position.y, t);
+	//RCLCPP_INFO(get_logger(), "GOAL: %lf %lf %d", msg->pose.position.x, msg->pose.position.y, t);
 	vi_->setGoal(msg->pose.position.x, msg->pose.position.y, t);
-	RCLCPP_INFO(get_logger(), "START!!!");
+	//RCLCPP_INFO(get_logger(), "START!!!");
 	astar(msg);
 	
 	/*
@@ -262,12 +262,13 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	
 	auto response_received_callback = [this](ServiceResponseFuture future) {
     	auto response = future.get();
-    	RCLCPP_INFO(this->get_logger(), "Path received");
+    	//RCLCPP_INFO(this->get_logger(), "Path received");
 	  	//make thread for VI
+		std::reverse(response->path.poses.begin(), response->path.poses.end());
 		for(auto i : response->path.poses) {
 			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),i));
-			RCLCPP_INFO(get_logger(), 
-				"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
+			//RCLCPP_INFO(get_logger(), 
+			//	"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
 		}
 		for(auto &t : ths_a) t.join();
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");

@@ -200,7 +200,7 @@ void ValueIterator::valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped di
     int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
 	std::vector<int> index;
 	setAstarSweepOrder(index, ix, iy, radius);
-	RCLCPP_INFO(rclcpp::get_logger("Aster"), "%d %d:A*!!!",ix,iy);
+	//RCLCPP_INFO(rclcpp::get_logger("Aster"), "%d %d:A*!!!",ix,iy);
 	for(int i=0;i<n;i++){
 		for(int t : index){
 			valueIteration(states_[t]);
