@@ -265,8 +265,9 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
     	//RCLCPP_INFO(this->get_logger(), "Path received");
 	  	//make thread for VI
 		std::reverse(response->path.poses.begin(), response->path.poses.end());
-		for(auto i : response->path.poses) {
-			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),i));
+		int i=0;
+		for(auto p : response->path.poses) {
+			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),p,i++));
 			//RCLCPP_INFO(get_logger(), 
 			//	"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
 		}

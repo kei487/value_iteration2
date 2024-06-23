@@ -27,7 +27,7 @@ protected:
 public:
 	void setGoal(double goal_x, double goal_y, int goal_t);
 	void valueIterationWorker(unsigned int times, int id);
-	void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp);
+	void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp,int i);
 /* calculation */
 protected: 
 	int toIndex(int ix, int iy, int it);
