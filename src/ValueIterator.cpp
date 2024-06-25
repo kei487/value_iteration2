@@ -194,7 +194,7 @@ uint64_t ValueIterator::valueIteration(State &s)
 
 void ValueIterator::valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp, int i)
 {
-	int n = 50;
+	int n = 20;
 	int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
 	int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
 	for(int t=0; t<cell_num_t_;t++){
