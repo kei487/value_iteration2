@@ -12,7 +12,7 @@
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/path.hpp>
 
-namespace ike_nav
+namespace value_iteration2
 {
 struct Node
 {
@@ -49,11 +49,11 @@ protected:
 
   nav_msgs::msg::Path planning(double sx, double sy, double gx, double gy);
   uint32_t calcXYIndex(double positio);
-  uint32_t calcGridIndex(ike_nav::Node node);
-  double calcHeurisic(ike_nav::Node node1, ike_nav::Node node2);
-  bool verifyNode(ike_nav::Node node);
+  uint32_t calcGridIndex(value_iteration2::Node node);
+  double calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2);
+  bool verifyNode(value_iteration2::Node node);
   nav_msgs::msg::Path calcFinalPath(
-    ike_nav::Node goal_node, std::map<uint32_t, ike_nav::Node> closed_set);
+    value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set);
   double calcGridPosition(uint32_t goal_node_position);
 
   void smoothPath(nav_msgs::msg::Path & path);
@@ -86,6 +86,6 @@ private:
   double max_smooth_path_iteration_;
 };
 
-}  // namespace ike_nav
+}  // namespace value_iteration2
 
 #endif  // VALUE_ITERATION_PLANNER_H__

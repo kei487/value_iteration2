@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-namespace ike_nav
+namespace value_iteration2
 {
 
 IkePlanner::IkePlanner(const rclcpp::NodeOptions & options) : Node("ike_planner", options)
@@ -25,7 +25,6 @@ void IkePlanner::getParam()
 {
   this->param_listener_ =
     std::make_shared<ike_planner::ParamListener>(this->get_node_parameters_interface());
-  this->params_ = param_listener_->get_params();
 
   use_dijkstra_ = this->params_.use_dijkstra;
   publish_searched_map_ = this->params_.publish_searched_map;
@@ -57,6 +56,8 @@ void IkePlanner::initSubscriber()
   options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
   costmap_2d_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
     "costmap_2d", 1, costmap_2d_callback, options);
+
+  RCLCPP_INFO(this->get_logger(), "set subscriver!");
 }
 
 void IkePlanner::initServiceServer()
@@ -87,6 +88,8 @@ void IkePlanner::initServiceServer()
     RCLCPP_INFO(this->get_logger(), "IkePlanner planning done");
   };
   get_path_srv_ = create_service<ike_nav_msgs::srv::GetPath>("get_path", get_path);
+  RCLCPP_INFO(this->get_logger(), "set service sever!");
+
 }
 
 void IkePlanner::initServiceClient()
@@ -126,10 +129,10 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
 {
   RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf, goal x:%lf y:%lf", sx,sy,gx,gy);
   RCLCPP_INFO(this->get_logger(), "hight:%lf width:%lf", resolution_*x_width_, resolution_*y_width_);
-  auto start_node = ike_nav::Node(calcXYIndex(sx), calcXYIndex(sy), 0.0, -1);
-  auto goal_node = ike_nav::Node(calcXYIndex(gx), calcXYIndex(gy), 0.0, -1);
+  auto start_node = value_iteration2::Node(calcXYIndex(sx), calcXYIndex(sy), 0.0, -1);
+  auto goal_node = value_iteration2::Node(calcXYIndex(gx), calcXYIndex(gy), 0.0, -1);
 
-  std::map<uint32_t, ike_nav::Node> open_set, closed_set;
+  std::map<uint32_t, value_iteration2::Node> open_set, closed_set;
   open_set.insert(std::make_pair(calcGridIndex(start_node), start_node));
 
   //search_map_ = obstacle_map_;
@@ -147,7 +150,7 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
       for (auto id_node_map : open_set) {
 	      id_cost_map.insert(std::make_pair(
 	        id_node_map.first, open_set[id_node_map.first].cost 
-            + calcHeurisic(goal_node, static_cast<ike_nav::Node>(open_set[id_node_map.first]))));
+            + calcHeurisic(goal_node, static_cast<value_iteration2::Node>(open_set[id_node_map.first]))));
       }
 
       return std::min_element(
@@ -172,7 +175,7 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
     closed_set.insert(std::make_pair(c_id, current));
 
     for (size_t i = 0; i < motion_.size(); ++i) {
-      auto node = ike_nav::Node(
+      auto node = value_iteration2::Node(
         current.x + std::get<0>(motion_[i]), current.y + std::get<1>(motion_[i]),
         current.cost + std::get<2>(motion_[i]), c_id);
 
@@ -195,7 +198,7 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
 }
 
 nav_msgs::msg::Path IkePlanner::calcFinalPath(
-  ike_nav::Node goal_node, std::map<uint32_t, ike_nav::Node> closed_set)
+  value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set)
 {
   std::vector<double> rx, ry;
   rx.push_back(calcGridPosition(goal_node.x));
@@ -271,7 +274,7 @@ double IkePlanner::calcNewPositionXY(
 
 double IkePlanner::calcGridPosition(uint32_t node_position) { return node_position * resolution_; }
 
-bool IkePlanner::verifyNode(ike_nav::Node node)
+bool IkePlanner::verifyNode(value_iteration2::Node node)
 {
   if (node.x < min_x_)
     return false;
@@ -287,7 +290,7 @@ bool IkePlanner::verifyNode(ike_nav::Node node)
   return true;
 }
 
-double IkePlanner::calcHeurisic(ike_nav::Node node1, ike_nav::Node node2)
+double IkePlanner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
   auto w = 1.0;
   double d = w * std::hypot(
@@ -306,7 +309,7 @@ uint32_t IkePlanner::calcXYIndex(double position)
   return static_cast<uint32_t>(std::round(position / resolution_));
 }
 
-uint32_t IkePlanner::calcGridIndex(ike_nav::Node node) { return node.y * x_width_ + node.x; }
+uint32_t IkePlanner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x; }
 
 void IkePlanner::getCostMap2D()
 {
@@ -329,13 +332,13 @@ void IkePlanner::getCostMap2D()
     get_costmap_2d_map_srv_client_->async_send_request(request, response_received_callback);
 }
 
-}  // namespace ike_nav
+}  // namespace value_iteration2
 
 int main(int argc, char **argv)
 {
 	rclcpp::init(argc,argv);
   rclcpp::NodeOptions opt;
-	auto node = std::make_shared<ike_nav::IkePlanner>(opt);
+	auto node = std::make_shared<value_iteration2::IkePlanner>(opt);
 	rclcpp::spin(node);
 	return 0;
 }

@@ -229,13 +229,14 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 
   //service client /get_path ike_nav_msgs::srv::GetPath
 	get_path_srv_client_ =
-    	this->create_client<ike_nav_msgs::srv::GetPath>("/get_path");
+    	this->create_client<ike_nav_msgs::srv::GetPath>("/ike_nav/get_path");
 
 	//wait service avairable
 	while(!get_path_srv_client_->wait_for_service(std::chrono::seconds(1))){
 		if (!rclcpp::ok()) {
       		RCLCPP_ERROR(this->get_logger(),
 				"client interrupted while waiting for service to appear.");
+			return;
     	}
     	RCLCPP_INFO(this->get_logger(), "waiting for service to appear...");
 	}
