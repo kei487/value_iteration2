@@ -1,4 +1,3 @@
-#include "value_iteration2/ValueIterator.h"
 #include "rclcpp/rclcpp.hpp"
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
