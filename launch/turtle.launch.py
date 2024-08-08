@@ -5,6 +5,7 @@ from launch_ros.actions import Node
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
 
 
 def generate_launch_description():
