@@ -42,7 +42,7 @@ void ViNode::setMap(void)
 {
 	declare_parameter("theta_cell_num", 60);
 	declare_parameter("safety_radius", 0.2);
-	declare_parameter("safety_radius_penalty", 30.0);
+	declare_parameter("safety_radius_penalty", 100.0);
 	declare_parameter("goal_margin_radius", 0.2);
 	declare_parameter("goal_margin_theta", 10);
 	declare_parameter("map_type", "occupancy");
