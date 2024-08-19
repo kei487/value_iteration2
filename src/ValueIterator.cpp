@@ -1,3 +1,4 @@
+#include "value_iteration2/ValueIterator.h"
 #include "rclcpp/rclcpp.hpp"
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
@@ -18,6 +19,7 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 		double safety_radius, double safety_radius_penalty,
 		double goal_margin_radius, int goal_margin_theta)
 {
+	RCUTILS_LOG_INFO("MAP SETTING START");
 	if ( map.info.width <= 0 || map.info.height <= 0 || map.info.resolution < 0.0001 )
 		return false;
 
@@ -105,6 +107,7 @@ void ValueIterator::setStateTransition(void)
 
 	for(auto &th : ths)
 		th.join();
+	RCUTILS_LOG_INFO("setStateTransition end");
 }
 void ValueIterator::cellDelta(double x, double y, double t, int &ix, int &iy, int &it)
 {
@@ -283,10 +286,15 @@ void ValueIterator::setState(const nav_msgs::msg::OccupancyGrid &map, double saf
 	states_.clear();
 	int margin = (int)ceil(safety_radius/xy_resolution_);
 
+	RCUTILS_LOG_INFO("SetState() doing");
+	RCUTILS_LOG_INFO("y:%d x:%d t:%d",cell_num_y_,cell_num_x_,cell_num_t_);
 	for(int y=0; y<cell_num_y_; y++)
 		for(int x=0; x<cell_num_x_; x++)
-			for(int t=0; t<cell_num_t_; t++)
+			for(int t=0; t<cell_num_t_; t++){
+				if(y==379&&x==5410) RCUTILS_LOG_INFO("y:%d x:%d t:%d",y,x,t);
 				states_.push_back(State(x, y, t, map, margin, safety_radius_penalty, cell_num_x_));
+	}
+	RCUTILS_LOG_INFO("SetState() done");
 }
 
 
@@ -453,6 +461,7 @@ void ValueIterator::setSweepOrders(void)
 		sweep_orders_[4].insert(sweep_orders_[4].end(),
 			sweep_orders_[i].begin()+half, sweep_orders_[i].end() );
 	}
+	RCUTILS_LOG_INFO("setSweepOrder end");
 }
 
 /*
