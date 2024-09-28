@@ -55,7 +55,7 @@ void IkePlanner::initSubscriber()
   rclcpp::SubscriptionOptions options;
   options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
   costmap_2d_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-    "costmap_2d", 1, costmap_2d_callback, options);
+    "/costmap_2d", 2, costmap_2d_callback, options);
 
   RCLCPP_INFO(this->get_logger(), "set subscriver!");
 }
