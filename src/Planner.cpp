@@ -102,7 +102,7 @@ void IkePlanner::initPlanner()
 {
   RCLCPP_INFO(this->get_logger(), "IkePlanner initializing start");
   resolution_ = obstacle_map_.info.resolution;
-  robot_radius_ = 1.0;
+  robot_radius_ = 0.1;
   min_x_ = min_y_ = 0;
   max_x_ = x_width_ = obstacle_map_.info.width;
   max_y_ = y_width_ = obstacle_map_.info.height;
@@ -286,6 +286,13 @@ bool IkePlanner::verifyNode(value_iteration2::Node node)
     return false;
 
   if (obstacle_map_.data[calcGridIndex(node)] == 100) return false;
+
+  //半径robot_radius以内に使えないマスがあればfalse
+  auto grid_robot_radius_ = std::ceil(robot_radius_ / obstacle_map_.info.resolution);
+  for(auto i = node.y - grid_robot_radius_; i < node.y + grid_robot_radius_; i++)
+    for(auto j = node.x - grid_robot_radius_; j < node.x + grid_robot_radius_; j++)
+      if(obstacle_map_.data[i * x_width_ + j] > 10)
+        return false;
 
   return true;
 }

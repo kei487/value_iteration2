@@ -31,6 +31,8 @@ void ViNode::init(void)
 	setCommunication();
         setMap();
 	RCLCPP_INFO(get_logger(), "!!!!!!!!!!! INIT DONE !!!!!!!!!!ddd");
+	//publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
+	pub_cost_map_->publish(map_for_astar_);
 }
 
 ViNode::~ViNode() 
@@ -226,8 +228,6 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 {
 	RCLCPP_INFO(get_logger(), "START A*!!!");
 
-  //publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
-	pub_cost_map_->publish(map_for_astar_);
 
   //service client /get_path ike_nav_msgs::srv::GetPath
 	get_path_srv_client_ =
