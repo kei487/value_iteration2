@@ -197,7 +197,7 @@ uint64_t ValueIterator::valueIteration(State &s)
 void ValueIterator::valueIterationWorkerAstar(nav_msgs::msg::Path path)
 {
 	std::reverse(path.poses.begin(), path.poses.end());
-	int n = 20,i=0;
+	int gein = 20000,i=0;
 	for(auto disp : path.poses){
 		
 		int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
@@ -206,7 +206,7 @@ void ValueIterator::valueIterationWorkerAstar(nav_msgs::msg::Path path)
 		for(int t=0; t<cell_num_t_;t++){
 
 			auto index=toIndex(ix,iy,t);
-			states_[index].total_cost_=i*n;
+			states_[index].total_cost_ = i * gein;
 		
 		}
 		

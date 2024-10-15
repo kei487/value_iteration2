@@ -139,6 +139,7 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
   //search_map_ = obstacle_map_;
   RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
   RCLCPP_INFO(this->get_logger(), "start loop");
+  
   while (rclcpp::ok()) {
     if (open_set.size() == 0) {
       RCLCPP_ERROR(this->get_logger(), "Open set is empty");

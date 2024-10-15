@@ -36,7 +36,7 @@ protected:
 	void cellDelta(double x, double y, double t, int &ix, int &iy, int &it);
 	void noNoiseStateTransition(Action &a, double from_x, double from_y, double from_t, double &to_x, double &to_y, double &to_t);
 	rclcpp::Clock ros_clock_;
-	void setAstarSweepOrder(std::vector<int> &index, int ix, int iy, int radius);
+	//void setAstarSweepOrder(std::vector<int> &index, int ix, int iy, int radius);
 /* robot control */
 public: 
 	bool endOfTrial(void);
