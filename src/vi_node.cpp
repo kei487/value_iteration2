@@ -141,6 +141,10 @@ void ViNode::setCommunication(void)
 	decision_timer_ = this->create_wall_timer(100ms, std::bind(&ViNode::decision, this));
 	value_pub_timer_ = this->create_wall_timer(1500ms, std::bind(&ViNode::pubValueFunction, this));
 
+  //service client /get_path ike_nav_msgs::srv::GetPath
+	get_path_srv_client_ =
+    	this->create_client<ike_nav_msgs::srv::GetPath>("/ike_nav/get_path");//"/get_path");
+		
 #if 0
 	as_->start();
 	srv_policy_ = nh_.advertiseService("/policy", &ViNode::servePolicy, this);
@@ -229,10 +233,6 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	RCLCPP_INFO(get_logger(), "START A*!!!");
 
 
-  //service client /get_path ike_nav_msgs::srv::GetPath
-	get_path_srv_client_ =
-    	this->create_client<ike_nav_msgs::srv::GetPath>("/ike_nav/get_path");//"/get_path");
-
 	//wait service avairable
 	while(!get_path_srv_client_->wait_for_service(std::chrono::seconds(1))){
 		if (!rclcpp::ok()) {
@@ -246,9 +246,11 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	//set request
 	auto request = std::make_shared<ike_nav_msgs::srv::GetPath::Request>();
 
+	//set goal to request
 	request->goal.pose.position.x = msg->pose.position.x;
 	request->goal.pose.position.y = msg->pose.position.y;
 
+	//set current position to request
 	try{
 		tf_buffer_->canTransform("map", "base_link", rclcpp::Time(0), rclcpp::Duration::from_seconds(0.1));
 		geometry_msgs::msg::TransformStamped trans =
@@ -265,19 +267,9 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	
 	auto response_received_callback = [this](ServiceResponseFuture future) {
     	auto response = future.get();
-    	//RCLCPP_INFO(this->get_logger(), "Path received");
-	  	//make thread for VI
-		std::reverse(response->path.poses.begin(), response->path.poses.end());
-		int i=0;
-		for(auto p : response->path.poses) {
-			ths_a.push_back(thread(&ValueIterator::valueIterationWorkerAstar,vi_.get(),p,i++));
-			//RCLCPP_INFO(get_logger(), 
-			//	"path:x %lf,y %lf",i.pose.position.x,i.pose.position.y);
-		}
-		for(auto &t : ths_a) t.join();
+    	//RCLCPP_INFO(this->get_logger(), "Path received");	
+		vi_->valueIterationWorkerAstar(response->path);
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
-		//publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
-		pub_cost_map_->publish(map_for_astar_);
 	};
 
 	//call service

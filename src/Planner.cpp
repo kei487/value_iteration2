@@ -86,6 +86,7 @@ void IkePlanner::initServiceServer()
       RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf",i.pose.position.x, i.pose.position.y);
     }
     RCLCPP_INFO(this->get_logger(), "IkePlanner planning done");
+    initPlanner(); 
   };
   get_path_srv_ = create_service<ike_nav_msgs::srv::GetPath>("get_path", get_path);
   RCLCPP_INFO(this->get_logger(), "set service sever!");

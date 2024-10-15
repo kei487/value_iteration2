@@ -3,6 +3,7 @@
 
 #include "Action.h"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include <std_msgs/msg/u_int32_multi_array.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 #include "State.h"
@@ -27,7 +28,7 @@ protected:
 public:
 	void setGoal(double goal_x, double goal_y, int goal_t);
 	void valueIterationWorker(unsigned int times, int id);
-	void valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp,int i);
+	void valueIterationWorkerAstar(nav_msgs::msg::Path path);
 /* calculation */
 protected: 
 	int toIndex(int ix, int iy, int it);

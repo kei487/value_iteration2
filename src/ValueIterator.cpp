@@ -194,14 +194,24 @@ uint64_t ValueIterator::valueIteration(State &s)
 	return delta > 0 ? delta : -delta;
 }
 
-void ValueIterator::valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped disp, int i)
+void ValueIterator::valueIterationWorkerAstar(nav_msgs::msg::Path path)
 {
-	int n = 20;
-	int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
-	int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
-	for(int t=0; t<cell_num_t_;t++){
-		auto index=toIndex(ix,iy,t);
-		states_[index].total_cost_=i*n;
+	std::reverse(path.poses.begin(), path.poses.end());
+	int n = 20,i=0;
+	for(auto disp : path.poses){
+		
+		int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
+		int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
+	
+		for(int t=0; t<cell_num_t_;t++){
+
+			auto index=toIndex(ix,iy,t);
+			states_[index].total_cost_=i*n;
+		
+		}
+		
+		++i;
+
 	}
 	/*
 	std::vector<int> index;
