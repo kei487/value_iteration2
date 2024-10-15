@@ -215,6 +215,7 @@ void ValueIterator::valueIterationWorkerAstar(geometry_msgs::msg::PoseStamped di
 	*/
 }
 
+/*
 void ValueIterator::setAstarSweepOrder(std::vector<int> &index, int ix, int iy, int radius)
 {
 	for(int i=ix-radius;i<ix+radius;i++){
@@ -225,6 +226,7 @@ void ValueIterator::setAstarSweepOrder(std::vector<int> &index, int ix, int iy, 
 		}
 	}
 }
+*/
 
 void ValueIterator::valueIterationWorker(unsigned int times, int id)
 {
