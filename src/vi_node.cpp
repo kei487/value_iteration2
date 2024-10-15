@@ -278,8 +278,6 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
 		//publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
 		pub_cost_map_->publish(map_for_astar_);
-}
-
 	};
 
 	//call service
