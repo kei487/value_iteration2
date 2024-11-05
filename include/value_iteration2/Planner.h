@@ -3,12 +3,12 @@
 #ifndef VALUE_ITERATION_PLANNER_H__K
 #define VALUE_ITERATION_PLANNER_H__
 
-#include "ike_planner_parameter/ike_planner_parameter.hpp"
+// #include "ike_planner_parameter/ike_planner_parameter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "ike_nav_msgs/srv/get_cost_map2_d.hpp"
-#include "ike_nav_msgs/srv/get_path.hpp"
+//#include "ike_nav_msgs/srv/get_cost_map2_d.hpp"
+#include "value_iteration2_astar_msgs/srv/get_path.hpp"
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/path.hpp>
 
@@ -16,7 +16,7 @@ namespace value_iteration2
 {
 struct Node
 {
-  uint32_t x, y;
+  uint32_t x, y ;// ,sita;
   double cost;
   int32_t parent_index;
 
@@ -66,10 +66,10 @@ private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr search_map_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr plan_path_pub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_2d_sub_;
-  rclcpp::Service<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_;
-  rclcpp::Client<ike_nav_msgs::srv::GetCostMap2D>::SharedPtr get_costmap_2d_map_srv_client_;
+  rclcpp::Service<value_iteration2_astar_msgs::srv::GetPath>::SharedPtr get_path_srv_;
+  //rclcpp::Client<ike_nav_msgs::srv::GetCostMap2D>::SharedPtr get_costmap_2d_map_srv_client_;
 
-  std::shared_ptr<ike_planner::ParamListener> param_listener_;
+  //std::shared_ptr<ike_planner::ParamListener> param_listener_;
   ike_planner::Params params_;
 
   double resolution_, robot_radius_;

@@ -8,8 +8,8 @@ endif()
 # find dependencies
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(ike_nav_msgs REQUIRED)
-find_package(ike_nav_parameters REQUIRED)
+find_package(value_iteration2_astar_msgs REQUIRED)
+#find_package(ike_nav_parameters REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)

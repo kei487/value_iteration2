@@ -16,7 +16,7 @@ IkePlanner::IkePlanner(const rclcpp::NodeOptions & options) : Node("ike_planner"
   initPublisher();
   initSubscriber();
   initServiceServer();
-  initServiceClient();
+  //initServiceClient();
   RCLCPP_INFO(this->get_logger(), "IkePlanner initialize done!");
   //getCostMap2D();
 }
@@ -93,11 +93,11 @@ void IkePlanner::initServiceServer()
 
 }
 
-void IkePlanner::initServiceClient()
+/*void IkePlanner::initServiceClient()
 {
   get_costmap_2d_map_srv_client_ =
     this->create_client<ike_nav_msgs::srv::GetCostMap2D>("get_costmap_2d");
-}
+}*/
 
 void IkePlanner::initPlanner()
 {

@@ -1,4 +1,4 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+//SPDX-FileCopyrightText: 2024 Keitaro Nakamura keitaronkmr@gmail.com
 //SPDX-License-Identifier: BSD-3-Clause
 
 #ifndef _VI_NODE_H__
@@ -14,7 +14,7 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-#include "ike_nav_msgs/srv/get_path.hpp"
+#include "value_iteration2_astar_msgs/srv/get_path.hpp"
 
 /*
 #include <ros/ros.h>
@@ -94,7 +94,7 @@ private:
 	void astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
 	nav_msgs::msg::OccupancyGrid map_for_astar_;
 	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_cost_map_;
-	rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
+	rclcpp::Client<value_iteration2_astar_msgs::srv::GetPath>::SharedPtr get_path_srv_client_;
 	vector<thread> ths_a;
 };
 
