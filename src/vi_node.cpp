@@ -143,7 +143,7 @@ void ViNode::setCommunication(void)
 
   //service client /get_path ike_nav_msgs::srv::GetPath
 	get_path_srv_client_ =
-    	this->create_client<ike_nav_msgs::srv::GetPath>("/ike_nav/get_path");//"/get_path");
+    	this->create_client<value_iteration2_astar_msgs::srv::GetPath>("/value_iteration2/get_path");
 		
 #if 0
 	as_->start();
@@ -244,7 +244,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	}
 
 	//set request
-	auto request = std::make_shared<ike_nav_msgs::srv::GetPath::Request>();
+	auto request = std::make_shared<value_iteration2_astar_msgs::srv::GetPath::Request>();
 
 	//set goal to request
 	request->goal.pose.position.x = msg->pose.position.x;
@@ -263,7 +263,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 
 	//set response
 	using ServiceResponseFuture = 
-		rclcpp::Client<ike_nav_msgs::srv::GetPath>::SharedFuture;
+		rclcpp::Client<value_iteration2_astar_msgs::srv::GetPath>::SharedFuture;
 	
 	auto response_received_callback = [this](ServiceResponseFuture future) {
     	auto response = future.get();

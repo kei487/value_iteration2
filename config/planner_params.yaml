@@ -1,0 +1,7 @@
+/**:
+  ros__parameters:
+    use_dijkstra: false
+    publish_searched_map: false
+    update_path_weight: 0.05
+    smooth_path_weight: 0.8
+    iteration_delta_threshold: 1.e-6
