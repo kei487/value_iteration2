@@ -200,16 +200,14 @@ void ValueIterator::valueIterationWorkerAstar(nav_msgs::msg::Path path)
 	int gein = 20000,i=0;
 	for(auto disp : path.poses){
 		
+		double t = 2*atan2(disp.pose.orientation.z, disp.pose.orientation.w); 
 		int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
 		int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
+		int it = (int)floor( t / t_resolution_ );
 	
-		for(int t=0; t<cell_num_t_;t++){
+		auto index=toIndex(ix,iy,it);
+		states_[index].total_cost_ = i * gein;
 
-			auto index=toIndex(ix,iy,t);
-			states_[index].total_cost_ = i * gein;
-		
-		}
-		
 		++i;
 
 	}

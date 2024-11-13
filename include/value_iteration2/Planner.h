@@ -17,14 +17,14 @@ namespace value_iteration2
 {
 struct Node
 {
-  uint32_t x, y ;// ,sita;
+  uint32_t x, y, t;
   double cost;
   int32_t parent_index;
 
-  Node() : x(0), y(0), cost(0.0) {}
-  Node(uint32_t x, uint32_t y) : x(x), y(y), cost(0.0) {}
-  Node(uint32_t x, uint32_t y, double cost, int32_t parent_index)
-  : x(x), y(y), cost(cost), parent_index(parent_index)
+  Node() : x(0), y(0), t(0), cost(0.0) {}
+  Node(uint32_t x, uint32_t y, uint32_t t) : x(x), y(y), t(t), cost(0.0) {}
+  Node(uint32_t x, uint32_t y, uint32_t t, double cost, int32_t parent_index)
+  : x(x), y(y), t(t), cost(cost), parent_index(parent_index)
   {
   }
 };
@@ -46,16 +46,20 @@ protected:
 
   // void getCostMap2D();
 
-  std::vector<std::tuple<int32_t, int32_t, uint8_t>> getMotionModel();
+  std::vector<std::tuple<double, double, uint8_t>> getMotionModel();
 
-  nav_msgs::msg::Path planning(double sx, double sy, double gx, double gy);
+  nav_msgs::msg::Path planning(double sx, double sy, double st, double gx, double gy, double gt);
   uint32_t calcXYIndex(double positio);
+  uint32_t calcAIndex(double positio);
   uint32_t calcGridIndex(value_iteration2::Node node);
   double calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2);
   bool verifyNode(value_iteration2::Node node);
   nav_msgs::msg::Path calcFinalPath(
     value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set);
   double calcGridPosition(uint32_t goal_node_position);
+  double calcAnglePosition(uint32_t node_position);
+  void StateTransition(std::tuple<double, double, uint8_t> motion, 
+    double from_x, double from_y, double from_t, double &to_x, double &to_y, double &to_t);
 
   void smoothPath(nav_msgs::msg::Path & path);
   nav_msgs::msg::Path smoothOptimization(nav_msgs::msg::Path & path);
@@ -71,11 +75,12 @@ private:
   //rclcpp::Client<ike_nav_msgs::srv::GetCostMap2D>::SharedPtr get_costmap_2d_map_srv_client_;
 
   double resolution_, robot_radius_;
+  uint32_t angle_resolution_;
   uint32_t min_x_, min_y_, max_x_, max_y_;
   nav_msgs::msg::OccupancyGrid obstacle_map_;
   nav_msgs::msg::OccupancyGrid search_map_;
   uint32_t x_width_, y_width_;
-  std::vector<std::tuple<int32_t, int32_t, uint8_t>> motion_;
+  std::vector<std::tuple<double, double, uint8_t>> motion_;
 
   bool use_dijkstra_, publish_searched_map_;
   double update_path_weight_, smooth_path_weight_, iteration_delta_threshold_;
