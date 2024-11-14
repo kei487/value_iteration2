@@ -52,6 +52,7 @@ protected:
   uint32_t calcXYIndex(double positio);
   uint32_t calcAIndex(double positio);
   uint32_t calcGridIndex(value_iteration2::Node node);
+  uint32_t calcNodeIndex(value_iteration2::Node node);
   double calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2);
   bool verifyNode(value_iteration2::Node node);
   nav_msgs::msg::Path calcFinalPath(
@@ -59,7 +60,7 @@ protected:
   double calcGridPosition(uint32_t goal_node_position);
   double calcAnglePosition(uint32_t node_position);
   void StateTransition(std::tuple<double, double, uint8_t> motion, 
-    double from_x, double from_y, double from_t, double &to_x, double &to_y, double &to_t);
+    double from_x, double from_y, double from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t);
 
   void smoothPath(nav_msgs::msg::Path & path);
   nav_msgs::msg::Path smoothOptimization(nav_msgs::msg::Path & path);
@@ -76,7 +77,7 @@ private:
 
   double resolution_, robot_radius_;
   uint32_t angle_resolution_;
-  uint32_t min_x_, min_y_, max_x_, max_y_;
+  uint32_t min_x_, min_y_, min_t_, max_x_, max_y_, max_t_;
   nav_msgs::msg::OccupancyGrid obstacle_map_;
   nav_msgs::msg::OccupancyGrid search_map_;
   uint32_t x_width_, y_width_;

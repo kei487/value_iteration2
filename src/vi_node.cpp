@@ -249,6 +249,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	//set goal to request
 	request->goal.pose.position.x = msg->pose.position.x;
 	request->goal.pose.position.y = msg->pose.position.y;
+	request->goal.pose.orientation = msg->pose.orientation;
 
 	//set current position to request
 	try{
@@ -268,7 +269,7 @@ void ViNode::astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg)
 	
 	auto response_received_callback = [this](ServiceResponseFuture future) {
     	auto response = future.get();
-    	//RCLCPP_INFO(this->get_logger(), "Path received");	
+    	RCLCPP_INFO(this->get_logger(), "Path received");	
 		vi_->valueIterationWorkerAstar(response->path);
 	  	RCLCPP_INFO(get_logger(), "A* DONE!!!");
 	};

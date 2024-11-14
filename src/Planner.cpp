@@ -80,19 +80,15 @@ void vi_planner::initServiceServer()
     search_map_.info.origin.position.x -= obstacle_map_.info.origin.position.x;
     search_map_.info.origin.position.y -= obstacle_map_.info.origin.position.y;
     double start_angle,goal_angle;
-    start_angle = 2*atan2(request->start.pose.orientation.z, request->start.pose.orientation.w);
-    goal_angle = 2*atan2(request->goal.pose.orientation.z, request->goal.pose.orientation.w);
+    start_angle = 2*atan2(request->start.pose.orientation.z, request->start.pose.orientation.w) * 180 / M_PI;
+    goal_angle = 2*atan2(request->goal.pose.orientation.z, request->goal.pose.orientation.w) * 180 / M_PI;
+    RCLCPP_INFO(this->get_logger(), "g angle:%lf = atan2(%lf,%lf)", goal_angle, request->goal.pose.orientation.z, request->goal.pose.orientation.w);
     response->path = planning(
       request->start.pose.position.x, request->start.pose.position.y, start_angle, 
       request->goal.pose.position.x, request->goal.pose.position.y, goal_angle);
     RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
-    for(auto &i : response->path.poses){
-      i.pose.position.x += obstacle_map_.info.origin.position.x;
-      i.pose.position.y += obstacle_map_.info.origin.position.y;
-      RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf",i.pose.position.x, i.pose.position.y);
-    }
     RCLCPP_INFO(this->get_logger(), "vi_planner planning done");
-    initPlanner(); 
+    //initPlanner(); 
   };
   get_path_srv_ = create_service<value_iteration2_astar_msgs::srv::GetPath>("get_path", get_path);
   RCLCPP_INFO(this->get_logger(), "set service sever!");
@@ -110,9 +106,10 @@ void vi_planner::initPlanner()
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting start");
   resolution_ = obstacle_map_.info.resolution;
   robot_radius_ = 0.1;
-  min_x_ = min_y_ = 0;
+  min_x_ = min_y_ = min_t_ = 0;
   max_x_ = x_width_ = obstacle_map_.info.width;
   max_y_ = y_width_ = obstacle_map_.info.height;
+  max_t_ = std::round(360 / angle_resolution_);
   motion_ = getMotionModel();
   search_map_ = obstacle_map_;
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting done");
@@ -123,28 +120,29 @@ std::vector<std::tuple<double, double, uint8_t>> vi_planner::getMotionModel()
   // dx, dy, cost
   // liner, angler, cost
   return std::vector<std::tuple<double, double, uint8_t>>{
-    {0.3, 0.0, 1},
-    {-0.2, 0.0, 1},
-    {0.0, -20.0, 1},
-    {0.2, -20.0, 1},
-    {0.0, 20.0, 1},
-    {0.2, 20.0, 1}};
+    {1.0, 0.0, 1},
+    {-1.0, 0.0, 2},
+    {0.0, -1.0, 1},
+    {1.0, -1.0, 1},
+    {0.0, 1.0, 1},
+    {1.0, 1.0, 1}};
 }
 
 nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double gx, double gy, double gt)
 {
-  RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf, goal x:%lf y:%lf", sx,sy,gx,gy);
+  RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf t:%lf, goal x:%lf y:%lf t:%lf", sx,sy,st,gx,gy,gt);
   RCLCPP_INFO(this->get_logger(), "hight:%lf width:%lf", resolution_*x_width_, resolution_*y_width_);
   auto start_node = value_iteration2::Node(calcXYIndex(sx), calcXYIndex(sy), calcAIndex(st), 0.0, -1);
   auto goal_node = value_iteration2::Node(calcXYIndex(gx), calcXYIndex(gy), calcAIndex(gt), 0.0, -1);
 
   std::map<uint32_t, value_iteration2::Node> open_set, closed_set;
-  open_set.insert(std::make_pair(calcGridIndex(start_node), start_node));
+  open_set.insert(std::make_pair(calcNodeIndex(start_node), start_node));
 
   //search_map_ = obstacle_map_;
   RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
   RCLCPP_INFO(this->get_logger(), "start loop");
   
+  uint32_t cnt=0;
   while (rclcpp::ok()) {
     if (open_set.size() == 0) {
       RCLCPP_ERROR(this->get_logger(), "Open set is empty");
@@ -177,24 +175,30 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
       break;
     }
 
+    if(cnt % 1 == 0)
+      RCLCPP_INFO(this->get_logger(), "loop count:%d, open_set:%ld, heurisis:%lf", cnt, open_set.size(), calcHeurisic(goal_node,current));
+    cnt++;
+
     open_set.erase(c_id);
 
     closed_set.insert(std::make_pair(c_id, current));
 
     for (size_t i = 0; i < motion_.size(); ++i) {
 
-			double dx, dy, dt;
+			uint32_t dx, dy, dt;
 			StateTransition(motion_[i], current.x, current.y, current.t, dx, dy, dt);
-      auto node = value_iteration2::Node(calcXYIndex(dx), calcXYIndex(dy), 
-        calcAIndex(dt), current.cost + std::get<2>(motion_[i]), c_id);
+      auto node = value_iteration2::Node(dx, dy, dt, current.cost + std::get<2>(motion_[i]), c_id);
+      auto n_id = calcNodeIndex(node);
 
-      auto n_id = calcGridIndex(node);
-
-      if (!verifyNode(node)) continue;
+      if (!verifyNode(node)) {
+        continue;
+      }
       // check motion
       search_map_.data[n_id] = 50;
 
-      if (closed_set.find(n_id) != closed_set.end()) continue;
+      if (closed_set.find(n_id) != closed_set.end()) {
+        continue;
+      }
       if (open_set.find(n_id) == open_set.end())
         open_set.insert(std::make_pair(n_id, node));
       else {
@@ -207,17 +211,21 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
 }
 
 void vi_planner::StateTransition(std::tuple<double, double, uint8_t> motion, 
-	double from_x, double from_y, double from_t, double &to_x, double &to_y, double &to_t)
+	double from_x, double from_y, double from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t)
 {
+  double dx, dy;
 	double ang = from_t / 180 * M_PI;
-	to_x = from_x + std::get<0>(motion)*cos(ang);
-	to_y = from_y + std::get<0>(motion)*sin(ang);
-	to_t = from_t + std::get<1>(motion);
-	while(to_t < 0.0)
-		to_t += 360.0;
-  while(to_t > 360.0)
-    to_t -= 360.0;
+	dx = calcGridPosition(from_x) + resolution_*std::get<0>(motion)*cos(ang);
+	dy = calcGridPosition(from_y) + resolution_*std::get<0>(motion)*sin(ang);
+  to_x = calcXYIndex(dx);
+  to_y = calcXYIndex(dy); 
 
+	to_t = from_t + std::get<1>(motion);
+  while(to_t < 0.0)
+		to_t += max_t_;
+  while(to_t >= max_t_)
+    to_t -= max_t_;
+  
 }
 
 nav_msgs::msg::Path vi_planner::calcFinalPath(
@@ -230,10 +238,12 @@ nav_msgs::msg::Path vi_planner::calcFinalPath(
 
   while (parent_index != -1) {
     auto n = closed_set[parent_index];
-    pose_stamp.pose.position.x = calcGridPosition(n.x);
-    pose_stamp.pose.position.y = calcGridPosition(n.y);
+    pose_stamp.pose.position.x = calcGridPosition(n.x) + obstacle_map_.info.origin.position.x;
+    pose_stamp.pose.position.y = calcGridPosition(n.y) + obstacle_map_.info.origin.position.y;
     pose_stamp.pose.orientation.w = cos( calcAnglePosition(n.t) / 2 );
     pose_stamp.pose.orientation.z = sin( calcAnglePosition(n.t) / 2 );
+    RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf, t:%lf",
+      pose_stamp.pose.position.x, pose_stamp.pose.position.y, atan2(pose_stamp.pose.orientation.z,pose_stamp.pose.orientation.w) * 180 / M_PI );
     plan_path.poses.push_back(pose_stamp);
     parent_index = n.parent_index;
   }
@@ -319,14 +329,14 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
 
 double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
-  auto w = 0.5;
-  int diff_t = abs(static_cast<int>(node1.t - node2.t));
+  auto we = 0.5, wm = 1/angle_resolution_;
+  int diff_t = abs(static_cast<int>(calcAnglePosition(node1.t) - calcAnglePosition(node2.t)));
   if (diff_t > 180) diff_t -= 180;
-  double value = w *( std::hypot(
+  double value = we * std::hypot(
                    static_cast<double>(node1.x) - static_cast<double>(node2.x),
                    static_cast<double>(node1.y) - static_cast<double>(node2.y))
-                   + diff_t ) + 
-                 obstacle_map_.data[calcGridIndex(node2)];
+                + wm * diff_t ; 
+                 //obstacle_map_.data[calcGridIndex(node2)];
 
   // if Dijkstra's algorithm
   if (use_dijkstra_) value = 0.0;
@@ -344,7 +354,9 @@ uint32_t vi_planner::calcAIndex(double position)
   return static_cast<uint32_t>(std::round(position / angle_resolution_));
 }
 
-uint32_t vi_planner::calcGridIndex(value_iteration2::Node node) { return (node.y * x_width_ + node.x) * angle_resolution_ + node.t; }
+uint32_t vi_planner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x ; }
+
+uint32_t vi_planner::calcNodeIndex(value_iteration2::Node node) { return (node.y * x_width_ + node.x) * angle_resolution_ + node.t; }
 
 /*
 void vi_planner::getCostMap2D()
