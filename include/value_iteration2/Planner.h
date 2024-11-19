@@ -46,7 +46,7 @@ protected:
 
   // void getCostMap2D();
 
-  std::vector<std::tuple<double, double, uint8_t>> getMotionModel();
+  std::vector<std::tuple<int32_t, int32_t, uint8_t>> getMotionModel();
 
   nav_msgs::msg::Path planning(double sx, double sy, double st, double gx, double gy, double gt);
   uint32_t calcXYIndex(double positio);
@@ -59,8 +59,8 @@ protected:
     value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set);
   double calcGridPosition(uint32_t goal_node_position);
   double calcAnglePosition(uint32_t node_position);
-  void StateTransition(std::tuple<double, double, uint8_t> motion, 
-    double from_x, double from_y, double from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t);
+  void StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion, 
+    uint32_t from_x, uint32_t from_y, uint32_t from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t);
 
   void smoothPath(nav_msgs::msg::Path & path);
   nav_msgs::msg::Path smoothOptimization(nav_msgs::msg::Path & path);
@@ -81,7 +81,7 @@ private:
   nav_msgs::msg::OccupancyGrid obstacle_map_;
   nav_msgs::msg::OccupancyGrid search_map_;
   uint32_t x_width_, y_width_;
-  std::vector<std::tuple<double, double, uint8_t>> motion_;
+  std::vector<std::tuple<int32_t, int32_t, uint8_t>> motion_;
 
   bool use_dijkstra_, publish_searched_map_;
   double update_path_weight_, smooth_path_weight_, iteration_delta_threshold_;

@@ -109,6 +109,7 @@ void ValueIterator::setStateTransition(void)
 		th.join();
 	RCUTILS_LOG_INFO("setStateTransition end");
 }
+
 void ValueIterator::cellDelta(double x, double y, double t, int &ix, int &iy, int &it)
 {
 	ix = (int)floor(fabs(x) / xy_resolution_);
@@ -201,13 +202,14 @@ void ValueIterator::valueIterationWorkerAstar(nav_msgs::msg::Path path)
 	for(auto disp : path.poses){
 		
 		double t = 2*atan2(disp.pose.orientation.z, disp.pose.orientation.w); 
-		int ix = (int)floor( (disp.pose.position.x - map_origin_x_)/xy_resolution_ );
-		int iy = (int)floor( (disp.pose.position.y - map_origin_y_)/xy_resolution_ );
+		int ix = (int)floor( (disp.pose.position.x - map_origin_x_) / xy_resolution_ );
+		int iy = (int)floor( (disp.pose.position.y - map_origin_y_) / xy_resolution_ );
 		int it = (int)floor( t / t_resolution_ );
 	
-		auto index=toIndex(ix,iy,it);
+		auto index = toIndex(ix,iy,it);
 		states_[index].total_cost_ = i * gein;
-
+		
+		RCUTILS_LOG_INFO("ix:%d iy:%d it:%d index::%d",ix, iy, it, toIndex(ix,iy,it));
 		++i;
 
 	}

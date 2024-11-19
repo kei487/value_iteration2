@@ -105,27 +105,27 @@ void vi_planner::initPlanner()
 {
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting start");
   resolution_ = obstacle_map_.info.resolution;
-  robot_radius_ = 0.1;
+  robot_radius_ = 0.05;
   min_x_ = min_y_ = min_t_ = 0;
   max_x_ = x_width_ = obstacle_map_.info.width;
   max_y_ = y_width_ = obstacle_map_.info.height;
-  max_t_ = std::round(360 / angle_resolution_);
+  max_t_ = std::floor(360 / angle_resolution_);
   motion_ = getMotionModel();
   search_map_ = obstacle_map_;
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting done");
 }
 
-std::vector<std::tuple<double, double, uint8_t>> vi_planner::getMotionModel()
+std::vector<std::tuple<int32_t, int32_t, uint8_t>> vi_planner::getMotionModel()
 {
   // dx, dy, cost
   // liner, angler, cost
-  return std::vector<std::tuple<double, double, uint8_t>>{
-    {1.0, 0.0, 1},
-    {-1.0, 0.0, 2},
-    {0.0, -1.0, 1},
-    {1.0, -1.0, 1},
-    {0.0, 1.0, 1},
-    {1.0, 1.0, 1}};
+  return std::vector<std::tuple<int32_t, int32_t, uint8_t>>{
+    {1, 0, 1},
+    {-1, 0, 2},
+    {0, -1, 1},
+    {1, -1, 1},
+    {0, 1, 1},
+    {1, 1, 1}};
 }
 
 nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double gx, double gy, double gt)
@@ -175,8 +175,10 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
       break;
     }
 
-    if(cnt % 1 == 0)
+    if(cnt % 100 == 0){
       RCLCPP_INFO(this->get_logger(), "loop count:%d, open_set:%ld, heurisis:%lf", cnt, open_set.size(), calcHeurisic(goal_node,current));
+      search_map_pub_->publish(search_map_);
+    }
     cnt++;
 
     open_set.erase(c_id);
@@ -194,7 +196,7 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
         continue;
       }
       // check motion
-      search_map_.data[n_id] = 50;
+      search_map_.data[calcGridIndex(node)] = 100;
 
       if (closed_set.find(n_id) != closed_set.end()) {
         continue;
@@ -210,21 +212,22 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
   return calcFinalPath(goal_node, closed_set);
 }
 
-void vi_planner::StateTransition(std::tuple<double, double, uint8_t> motion, 
-	double from_x, double from_y, double from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t)
+void vi_planner::StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion, 
+	uint32_t from_x, uint32_t from_y, uint32_t from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t)
 {
   double dx, dy;
-	double ang = from_t / 180 * M_PI;
+	double ang = calcAnglePosition(from_t) / 180 * M_PI;
 	dx = calcGridPosition(from_x) + resolution_*std::get<0>(motion)*cos(ang);
 	dy = calcGridPosition(from_y) + resolution_*std::get<0>(motion)*sin(ang);
   to_x = calcXYIndex(dx);
   to_y = calcXYIndex(dy); 
 
-	to_t = from_t + std::get<1>(motion);
-  while(to_t < 0.0)
-		to_t += max_t_;
-  while(to_t >= max_t_)
-    to_t -= max_t_;
+  if(static_cast<int32_t>(from_t) + std::get<1>(motion) < 0)
+		to_t = from_t + std::get<1>(motion) + max_t_;
+  else if(from_t + std::get<1>(motion) >= max_t_)
+    to_t = from_t + std::get<1>(motion) - max_t_;
+  else
+    to_t = from_t + std::get<1>(motion);
   
 }
 
@@ -246,6 +249,7 @@ nav_msgs::msg::Path vi_planner::calcFinalPath(
       pose_stamp.pose.position.x, pose_stamp.pose.position.y, atan2(pose_stamp.pose.orientation.z,pose_stamp.pose.orientation.w) * 180 / M_PI );
     plan_path.poses.push_back(pose_stamp);
     parent_index = n.parent_index;
+    search_map_.data[calcGridIndex(n)] = 50;
   }
   std::reverse(plan_path.poses.begin(), plan_path.poses.end());
 
@@ -329,7 +333,11 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
 
 double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
-  auto we = 0.5, wm = 1/angle_resolution_;
+  // if Dijkstra's algorithm
+  if (use_dijkstra_) return 0.0;
+
+  auto we = 1;
+  auto wm = 0.01;
   int diff_t = abs(static_cast<int>(calcAnglePosition(node1.t) - calcAnglePosition(node2.t)));
   if (diff_t > 180) diff_t -= 180;
   double value = we * std::hypot(
@@ -337,9 +345,6 @@ double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::
                    static_cast<double>(node1.y) - static_cast<double>(node2.y))
                 + wm * diff_t ; 
                  //obstacle_map_.data[calcGridIndex(node2)];
-
-  // if Dijkstra's algorithm
-  if (use_dijkstra_) value = 0.0;
 
   return value;
 }
