@@ -8,21 +8,22 @@
 namespace value_iteration2
 {
 
-vi_planner::vi_planner(const rclcpp::NodeOptions & options) : Node("vi_planner", options)
+IkePlanner::IkePlanner(const rclcpp::NodeOptions & options) : Node("ike_planner", options)
 {
-  RCLCPP_INFO(this->get_logger(), "vi_planner initialize start!");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initialize start!");
   getParam();
 
   initPublisher();
   initSubscriber();
   initServiceServer();
   //initServiceClient();
-  RCLCPP_INFO(this->get_logger(), "vi_planner initialize done!");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initialize done!");
   //getCostMap2D();
 }
 
-void vi_planner::getParam()
+void IkePlanner::getParam()
 {
+<<<<<<< HEAD
   this->declare_parameter("use_dijkstra", false);
   this->declare_parameter("publish_searched_map", false);
   this->declare_parameter("update_path_weight", 0.05);
@@ -36,24 +37,35 @@ void vi_planner::getParam()
   this->get_parameter("smooth_path_weight", smooth_path_weight_);
   this->get_parameter("iteration_delta_threshold", iteration_delta_threshold_);
   this->get_parameter("angle_resolution", angle_resolution_);
+=======
+  this->param_listener_ =
+    std::make_shared<ike_planner::ParamListener>(this->get_node_parameters_interface());
+
+  use_dijkstra_ = this->params_.use_dijkstra;
+  publish_searched_map_ = this->params_.publish_searched_map;
+
+  update_path_weight_ = this->params_.update_path_weight;
+  smooth_path_weight_ = this->params_.smooth_path_weight;
+  iteration_delta_threshold_ = this->params_.iteration_delta_threshold;
+>>>>>>> parent of 295dff8 (add param)
 }
 
-void vi_planner::initPublisher()
+void IkePlanner::initPublisher()
 {
   search_map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>(
-    "Planner_searched_map", rclcpp::QoS(1).reliable());
+    "planner_searched_map", rclcpp::QoS(1).reliable());
   plan_path_pub_ =
     this->create_publisher<nav_msgs::msg::Path>("plan_path", rclcpp::QoS(1).reliable());
 }
 
-void vi_planner::initSubscriber()
+void IkePlanner::initSubscriber()
 {
   auto costmap_2d_callback = [this](const nav_msgs::msg::OccupancyGrid::UniquePtr msg) {
     // RCLCPP_INFO(
     //   this->get_logger(), "Subscribed message at address: %p", static_cast<void *>(msg.get()));
-    RCLCPP_INFO(this->get_logger(), "vi_planner get topic!");
+    RCLCPP_INFO(this->get_logger(), "IkePlanner get topic!");
     this->obstacle_map_ = *msg;
-    initPlanner();
+    initPlanner();    
   };
 
   rclcpp::SubscriptionOptions options;
@@ -64,14 +76,19 @@ void vi_planner::initSubscriber()
   RCLCPP_INFO(this->get_logger(), "set subscriver!");
 }
 
-void vi_planner::initServiceServer()
+void IkePlanner::initServiceServer()
 {
   auto get_path = [&](
                     const std::shared_ptr<rmw_request_id_t> request_header,
-                    const std::shared_ptr<value_iteration2_astar_msgs::srv::GetPath_Request> request,
-                    std::shared_ptr<value_iteration2_astar_msgs::srv::GetPath_Response> response) -> void {
+                    const std::shared_ptr<ike_nav_msgs::srv::GetPath_Request> request,
+                    std::shared_ptr<ike_nav_msgs::srv::GetPath_Response> response) -> void {
     (void)request_header;
+<<<<<<< HEAD
     RCLCPP_INFO(this->get_logger(), "vi_planner planning start");
+=======
+    // clang-format off
+    RCLCPP_INFO(this->get_logger(), "IkePlanner planning start");
+>>>>>>> parent of 295dff8 (add param)
     search_map_ = obstacle_map_;
     request->start.pose.position.x -= obstacle_map_.info.origin.position.x;
     request->start.pose.position.y -= obstacle_map_.info.origin.position.y;
@@ -87,23 +104,33 @@ void vi_planner::initServiceServer()
       request->start.pose.position.x, request->start.pose.position.y, start_angle, 
       request->goal.pose.position.x, request->goal.pose.position.y, goal_angle);
     RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
+<<<<<<< HEAD
     RCLCPP_INFO(this->get_logger(), "vi_planner planning done");
     //initPlanner(); 
+=======
+    for(auto &i : response->path.poses){
+      i.pose.position.x += obstacle_map_.info.origin.position.x;
+      i.pose.position.y += obstacle_map_.info.origin.position.y;
+      RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf",i.pose.position.x, i.pose.position.y);
+    }
+    RCLCPP_INFO(this->get_logger(), "IkePlanner planning done");
+    initPlanner(); 
+>>>>>>> parent of 295dff8 (add param)
   };
-  get_path_srv_ = create_service<value_iteration2_astar_msgs::srv::GetPath>("get_path", get_path);
+  get_path_srv_ = create_service<ike_nav_msgs::srv::GetPath>("get_path", get_path);
   RCLCPP_INFO(this->get_logger(), "set service sever!");
 
 }
 
-/*void vi_planner::initServiceClient()
+/*void IkePlanner::initServiceClient()
 {
   get_costmap_2d_map_srv_client_ =
-    this->create_client<value_iteration2_astar_msgs::srv::GetCostMap2D>("get_costmap_2d");
+    this->create_client<ike_nav_msgs::srv::GetCostMap2D>("get_costmap_2d");
 }*/
 
-void vi_planner::initPlanner()
+void IkePlanner::initPlanner()
 {
-  RCLCPP_INFO(this->get_logger(), "vi_planner map setting start");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initializing start");
   resolution_ = obstacle_map_.info.resolution;
   robot_radius_ = 0.05;
   min_x_ = min_y_ = min_t_ = 0;
@@ -112,10 +139,10 @@ void vi_planner::initPlanner()
   max_t_ = std::floor(360 / angle_resolution_);
   motion_ = getMotionModel();
   search_map_ = obstacle_map_;
-  RCLCPP_INFO(this->get_logger(), "vi_planner map setting done");
+  RCLCPP_INFO(this->get_logger(), "IkePlanner initializing done");
 }
 
-std::vector<std::tuple<int32_t, int32_t, uint8_t>> vi_planner::getMotionModel()
+std::vector<std::tuple<int32_t, int32_t, uint8_t>> IkePlanner::getMotionModel()
 {
   // dx, dy, cost
   // liner, angler, cost
@@ -128,7 +155,11 @@ std::vector<std::tuple<int32_t, int32_t, uint8_t>> vi_planner::getMotionModel()
     {1, 1, 1}};
 }
 
+<<<<<<< HEAD
 nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double gx, double gy, double gt)
+=======
+nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double gy)
+>>>>>>> parent of 295dff8 (add param)
 {
   RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf t:%lf, goal x:%lf y:%lf t:%lf", sx,sy,st,gx,gy,gt);
   RCLCPP_INFO(this->get_logger(), "hight:%lf width:%lf", resolution_*x_width_, resolution_*y_width_);
@@ -212,6 +243,7 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
   return calcFinalPath(goal_node, closed_set);
 }
 
+<<<<<<< HEAD
 void vi_planner::StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion, 
 	uint32_t from_x, uint32_t from_y, uint32_t from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t)
 {
@@ -232,6 +264,9 @@ void vi_planner::StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion,
 }
 
 nav_msgs::msg::Path vi_planner::calcFinalPath(
+=======
+nav_msgs::msg::Path IkePlanner::calcFinalPath(
+>>>>>>> parent of 295dff8 (add param)
   value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set)
 {
   auto parent_index = goal_node.parent_index;
@@ -263,13 +298,13 @@ nav_msgs::msg::Path vi_planner::calcFinalPath(
   return plan_path;
 }
 
-void vi_planner::smoothPath(nav_msgs::msg::Path & path)
+void IkePlanner::smoothPath(nav_msgs::msg::Path & path)
 {
   auto smoothed_path = smoothOptimization(path);
   path = smoothed_path;
 }
 
-nav_msgs::msg::Path vi_planner::smoothOptimization(nav_msgs::msg::Path & path)
+nav_msgs::msg::Path IkePlanner::smoothOptimization(nav_msgs::msg::Path & path)
 {
   auto new_path = path;
   auto delta = iteration_delta_threshold_;
@@ -290,7 +325,7 @@ nav_msgs::msg::Path vi_planner::smoothOptimization(nav_msgs::msg::Path & path)
   return new_path;
 }
 
-double vi_planner::calcNewPositionXY(
+double IkePlanner::calcNewPositionXY(
   double & delta, double original_data, double smoothed_data, double smoothed_prev_data,
   double smoothed_next_data)
 {
@@ -304,11 +339,15 @@ double vi_planner::calcNewPositionXY(
   return smoothed_data;
 }
 
-double vi_planner::calcGridPosition(uint32_t node_position) { return node_position * resolution_; }
+double IkePlanner::calcGridPosition(uint32_t node_position) { return node_position * resolution_; }
 
+<<<<<<< HEAD
 double vi_planner::calcAnglePosition(uint32_t node_position) { return node_position * angle_resolution_; }
 
 bool vi_planner::verifyNode(value_iteration2::Node node)
+=======
+bool IkePlanner::verifyNode(value_iteration2::Node node)
+>>>>>>> parent of 295dff8 (add param)
 {
   if (node.x < min_x_)
     return false;
@@ -321,7 +360,7 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
 
   if (obstacle_map_.data[calcGridIndex(node)] == 100) return false;
 
-  //一辺がrobot_radiusの正方形の範囲以内に使えないマスがあればfalse
+  //半径robot_radius以内に使えないマスがあればfalse
   auto grid_robot_radius_ = std::ceil(robot_radius_ / obstacle_map_.info.resolution);
   for(auto i = node.y - grid_robot_radius_; i < node.y + grid_robot_radius_; i++)
     for(auto j = node.x - grid_robot_radius_; j < node.x + grid_robot_radius_; j++)
@@ -331,7 +370,7 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
   return true;
 }
 
-double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
+double IkePlanner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
   // node1 is goal , node2 is current
   // if Dijkstra's algorithm
@@ -357,11 +396,12 @@ double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::
   return value;
 }
 
-uint32_t vi_planner::calcXYIndex(double position)
+uint32_t IkePlanner::calcXYIndex(double position)
 {
   return static_cast<uint32_t>(std::round(position / resolution_));
 }
 
+<<<<<<< HEAD
 uint32_t vi_planner::calcAIndex(double position)
 {
   return static_cast<uint32_t>(std::round(position / angle_resolution_));
@@ -370,9 +410,11 @@ uint32_t vi_planner::calcAIndex(double position)
 uint32_t vi_planner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x ; }
 
 uint32_t vi_planner::calcNodeIndex(value_iteration2::Node node) { return (node.y * x_width_ + node.x) * angle_resolution_ + node.t; }
+=======
+uint32_t IkePlanner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x; }
+>>>>>>> parent of 295dff8 (add param)
 
-/*
-void vi_planner::getCostMap2D()
+void IkePlanner::getCostMap2D()
 {
   while (!get_costmap_2d_map_srv_client_->wait_for_service(std::chrono::seconds(1))) {
     if (!rclcpp::ok()) {
@@ -391,7 +433,7 @@ void vi_planner::getCostMap2D()
   };
   auto future_result =
     get_costmap_2d_map_srv_client_->async_send_request(request, response_received_callback);
-}*/
+}
 
 }  // namespace value_iteration2
 
@@ -399,7 +441,7 @@ int main(int argc, char **argv)
 {
 	rclcpp::init(argc,argv);
   rclcpp::NodeOptions opt;
-	auto node = std::make_shared<value_iteration2::vi_planner>(opt);
+	auto node = std::make_shared<value_iteration2::IkePlanner>(opt);
 	rclcpp::spin(node);
 	return 0;
 }

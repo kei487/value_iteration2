@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef VALUE_ITERATION_PLANNER_H__
+#ifndef VALUE_ITERATION_PLANNER_H__K
 #define VALUE_ITERATION_PLANNER_H__
 
 // #include "ike_planner_parameter/ike_planner_parameter.hpp"
@@ -8,7 +8,6 @@
 #include <rclcpp/rclcpp.hpp>
 
 //#include "ike_nav_msgs/srv/get_cost_map2_d.hpp"
-//#include "value_iteration2/planner_param.hpp"
 #include "value_iteration2_astar_msgs/srv/get_path.hpp"
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <nav_msgs/msg/path.hpp>
@@ -29,10 +28,10 @@ struct Node
   }
 };
 
-class vi_planner : public rclcpp::Node
+class IkePlanner : public rclcpp::Node
 {
 public:
-  explicit vi_planner(const rclcpp::NodeOptions & options);
+  explicit IkePlanner(const rclcpp::NodeOptions & options);
 
 protected:
   void getParam();
@@ -40,11 +39,11 @@ protected:
   void initPublisher();
   void initSubscriber();
   void initServiceServer();
-  //void initServiceClient();
+  void initServiceClient();
 
   void initPlanner();
 
-  // void getCostMap2D();
+  void getCostMap2D();
 
   std::vector<std::tuple<int32_t, int32_t, uint8_t>> getMotionModel();
 
@@ -74,6 +73,9 @@ private:
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_2d_sub_;
   rclcpp::Service<value_iteration2_astar_msgs::srv::GetPath>::SharedPtr get_path_srv_;
   //rclcpp::Client<ike_nav_msgs::srv::GetCostMap2D>::SharedPtr get_costmap_2d_map_srv_client_;
+
+  //std::shared_ptr<ike_planner::ParamListener> param_listener_;
+  ike_planner::Params params_;
 
   double resolution_, robot_radius_;
   uint32_t angle_resolution_;
