@@ -168,7 +168,7 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double
 
     auto current = open_set[c_id];
 
-    if (current.x == goal_node.x and current.y == goal_node.y and current.t == goal_node.t) {
+    if (current.x == goal_node.x and current.y == goal_node.y) {
       RCLCPP_INFO(this->get_logger(), "Find goal");
       goal_node.parent_index = current.parent_index;
       goal_node.cost = current.cost;
@@ -333,17 +333,25 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
 
 double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
+  // node1 is goal , node2 is current
   // if Dijkstra's algorithm
   if (use_dijkstra_) return 0.0;
 
-  auto we = 1;
-  auto wm = 0.01;
-  int diff_t = abs(static_cast<int>(calcAnglePosition(node1.t) - calcAnglePosition(node2.t)));
-  if (diff_t > 180) diff_t -= 180;
-  double value = we * std::hypot(
+  auto w_d = 0.5;
+  //auto w_ga = 0.1;
+  auto w_gd = 1.0;
+  auto current_t = calcAnglePosition(node2.t);
+  auto goal_t = calcAnglePosition(node1.t);
+  auto direction_t = atan2(node1.y-node2.y, node1.x-node2.x) * 180 / M_PI;
+  auto diff_c2g = abs( current_t - goal_t );
+  if (diff_c2g > 180) diff_c2g -= 180;
+  auto diff_c2d = abs( current_t - direction_t );
+  if (diff_c2d > 180) diff_c2d = 360 - diff_c2d;
+  double value = w_d * std::hypot(
                    static_cast<double>(node1.x) - static_cast<double>(node2.x),
                    static_cast<double>(node1.y) - static_cast<double>(node2.y))
-                + wm * diff_t ; 
+               // + w_ga * diff_c2g 
+                + w_gd * diff_c2d; 
                  //obstacle_map_.data[calcGridIndex(node2)];
 
   return value;
