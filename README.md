@@ -1,6 +1,7 @@
 # value_iteration2: real-time value iteration planner package for ROS 2
 
 a monolithic mobile robot navigation system as a replacement for the navigation stack
+this branch is value_iteration2 with A* (2s) version
 
 * ROS 1 version: https://github.com/ryuichiueda/value_iteration
 
@@ -11,6 +12,7 @@ $ sudo apt install ros-humble-grid-map*
 $ sudo apt install ... (I will write later about required packages. )
 $ cd <workspace>
 $ git clone https://github.com/ryuichiueda/emcl2_ros2.git #Please use this version due to a problem of launch file.
+$ git clone https://github.com/kei487/value_iteration2_astar_msgs.git
 $ git clone https://github.com/ryuichiueda/value_iteration2.git
 $ cd <workspace>
 $ colcon build
