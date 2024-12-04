@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(value_iteration2_astar_msgs REQUIRED)
+find_package(generate_parameter_library REQUIRED)
 #find_package(ike_nav_parameters REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -24,12 +25,12 @@ ament_auto_add_executable(vi_node
   src/StateTransition.cpp
   src/vi_node.cpp
 )
-ament_auto_add_executable(planner
+ament_auto_add_executable(vi_planner
   src/Planner.cpp
 )
 
 install(TARGETS vi_node DESTINATION lib/${PROJECT_NAME})
-install(TARGETS planner DESTINATION lib/${PROJECT_NAME})
+install(TARGETS vi_planner DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY maps DESTINATION share/${PROJECT_NAME})
@@ -46,4 +47,5 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+ament_export_include_directories(include)
 ament_package()

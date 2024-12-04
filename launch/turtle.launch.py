@@ -17,6 +17,11 @@ def generate_launch_description():
       'config',
       'params.yaml'
     )
+    planner_config = os.path.join(
+      get_package_share_directory('value_iteration2'),
+      'config',
+      'planner_params.yaml'
+    )
 
     vi_node = Node(
             package='value_iteration2',
@@ -37,16 +42,10 @@ def generate_launch_description():
     
     planner_node = Node(
             package='value_iteration2',
-            namespace='ike_nav',
-            executable='planner',
+            namespace='value_iteration2',
+            executable='vi_planner',
             #output='screen'
-            parameters=[{
-                'use_dijkstra': False,
-                'publish_searched_map': True,
-                'update_path_weight': 0.05,
-                'smooth_path_weight': 0.8,
-                'iteration_delta_threshold': 1.e-6,
-            }],
+            parameters=[planner_config],
             #extra_arguments=[{'use_intra_process_comms': False}],
         )
 
