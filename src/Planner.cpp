@@ -24,6 +24,7 @@ IkePlanner::IkePlanner(const rclcpp::NodeOptions & options) : Node("ike_planner"
 void IkePlanner::getParam()
 {
 <<<<<<< HEAD
+<<<<<<< HEAD
   this->declare_parameter("use_dijkstra", false);
   this->declare_parameter("publish_searched_map", false);
   this->declare_parameter("update_path_weight", 0.05);
@@ -41,12 +42,20 @@ void IkePlanner::getParam()
   this->param_listener_ =
     std::make_shared<ike_planner::ParamListener>(this->get_node_parameters_interface());
 
+=======
+  this->param_listener_ =
+    std::make_shared<ike_planner::ParamListener>(this->get_node_parameters_interface());
+
+>>>>>>> parent of 295dff8 (add param)
   use_dijkstra_ = this->params_.use_dijkstra;
   publish_searched_map_ = this->params_.publish_searched_map;
 
   update_path_weight_ = this->params_.update_path_weight;
   smooth_path_weight_ = this->params_.smooth_path_weight;
   iteration_delta_threshold_ = this->params_.iteration_delta_threshold;
+<<<<<<< HEAD
+>>>>>>> parent of 295dff8 (add param)
+=======
 >>>>>>> parent of 295dff8 (add param)
 }
 
@@ -84,7 +93,12 @@ void IkePlanner::initServiceServer()
                     std::shared_ptr<ike_nav_msgs::srv::GetPath_Response> response) -> void {
     (void)request_header;
 <<<<<<< HEAD
+<<<<<<< HEAD
     RCLCPP_INFO(this->get_logger(), "vi_planner planning start");
+=======
+    // clang-format off
+    RCLCPP_INFO(this->get_logger(), "IkePlanner planning start");
+>>>>>>> parent of 295dff8 (add param)
 =======
     // clang-format off
     RCLCPP_INFO(this->get_logger(), "IkePlanner planning start");
@@ -156,7 +170,11 @@ std::vector<std::tuple<int32_t, int32_t, uint8_t>> IkePlanner::getMotionModel()
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double st, double gx, double gy, double gt)
+=======
+nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double gy)
+>>>>>>> parent of 295dff8 (add param)
 =======
 nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double gy)
 >>>>>>> parent of 295dff8 (add param)
@@ -244,6 +262,7 @@ nav_msgs::msg::Path IkePlanner::planning(double sx, double sy, double gx, double
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 void vi_planner::StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion, 
 	uint32_t from_x, uint32_t from_y, uint32_t from_t, uint32_t &to_x, uint32_t &to_y, uint32_t &to_t)
 {
@@ -264,6 +283,9 @@ void vi_planner::StateTransition(std::tuple<int32_t, int32_t, uint8_t> motion,
 }
 
 nav_msgs::msg::Path vi_planner::calcFinalPath(
+=======
+nav_msgs::msg::Path IkePlanner::calcFinalPath(
+>>>>>>> parent of 295dff8 (add param)
 =======
 nav_msgs::msg::Path IkePlanner::calcFinalPath(
 >>>>>>> parent of 295dff8 (add param)
@@ -340,12 +362,17 @@ double IkePlanner::calcNewPositionXY(
 }
 
 double IkePlanner::calcGridPosition(uint32_t node_position) { return node_position * resolution_; }
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 double vi_planner::calcAnglePosition(uint32_t node_position) { return node_position * angle_resolution_; }
 
 bool vi_planner::verifyNode(value_iteration2::Node node)
 =======
+bool IkePlanner::verifyNode(value_iteration2::Node node)
+>>>>>>> parent of 295dff8 (add param)
+=======
+
 bool IkePlanner::verifyNode(value_iteration2::Node node)
 >>>>>>> parent of 295dff8 (add param)
 {
@@ -402,6 +429,7 @@ uint32_t IkePlanner::calcXYIndex(double position)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 uint32_t vi_planner::calcAIndex(double position)
 {
   return static_cast<uint32_t>(std::round(position / angle_resolution_));
@@ -414,6 +442,10 @@ uint32_t vi_planner::calcNodeIndex(value_iteration2::Node node) { return (node.y
 uint32_t IkePlanner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x; }
 >>>>>>> parent of 295dff8 (add param)
 
+=======
+uint32_t IkePlanner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x; }
+
+>>>>>>> parent of 295dff8 (add param)
 void IkePlanner::getCostMap2D()
 {
   while (!get_costmap_2d_map_srv_client_->wait_for_service(std::chrono::seconds(1))) {
