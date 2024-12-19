@@ -4,6 +4,7 @@ a monolithic mobile robot navigation system as a replacement for the navigation 
 this branch is value_iteration2 with A* (2s) version
 
 * ROS 1 version: https://github.com/ryuichiueda/value_iteration
+* with A\* algorithm version: https://github.com/kei487/value_iteration2/tree/feature/withastar2d
 
 ## How to try
 
