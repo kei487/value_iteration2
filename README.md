@@ -3,6 +3,7 @@
 a monolithic mobile robot navigation system as a replacement for the navigation stack
 
 * ROS 1 version: https://github.com/ryuichiueda/value_iteration
+* with a\* algorthm: https://github.com/kei487/value_iteration2/tree/feature/withastar2d
 
 ## How to try
 
