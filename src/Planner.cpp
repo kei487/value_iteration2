@@ -337,20 +337,20 @@ double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::
   // if Dijkstra's algorithm
   if (use_dijkstra_) return 0.0;
 
-  auto w_d = 0.5;
+  auto w_d = 1.5;
   //auto w_ga = 0.1;
-  auto w_gd = 1.0;
-  auto current_t = calcAnglePosition(node2.t);
-  auto goal_t = calcAnglePosition(node1.t);
-  auto direction_t = atan2(node1.y-node2.y, node1.x-node2.x) * 180 / M_PI;
-  auto diff_c2g = abs( current_t - goal_t );
-  if (diff_c2g > 180) diff_c2g -= 180;
-  auto diff_c2d = abs( current_t - direction_t );
-  if (diff_c2d > 180) diff_c2d = 360 - diff_c2d;
-  double value = w_d * std::hypot(
-                   static_cast<double>(node1.x) - static_cast<double>(node2.x),
-                   static_cast<double>(node1.y) - static_cast<double>(node2.y))
-               // + w_ga * diff_c2g 
+  auto w_gd = 5.0;
+  auto current_t = static_cast<int>(node2.t);
+  //auto goal_t = node1.t;
+  auto direction_t = static_cast<int>(calcAIndex(atan2(static_cast<int>(node1.y)-static_cast<int>(node2.y)
+                                  , static_cast<int>(node1.x)-static_cast<int>(node2.x)) * 180 / M_PI));
+  //auto diff_c2g = abs( current_t - goal_t );
+  //if (diff_c2g > angle_resolution_/2) diff_c2g -= angle_resolution_;
+  auto diff_c2d = abs( static_cast<int>(current_t) - static_cast<int>(direction_t) );
+  if (diff_c2d > static_cast<int>(angle_resolution_)/2) diff_c2d = angle_resolution_ - diff_c2d;
+  double value = w_d * ( abs(static_cast<int>(node1.x) - static_cast<int>(node2.x)) 
+                + abs (static_cast<int>(node1.y) - static_cast<int>(node2.y)) )
+                //+ w_ga * diff_c2g 
                 + w_gd * diff_c2d; 
                  //obstacle_map_.data[calcGridIndex(node2)];
 
