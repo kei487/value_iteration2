@@ -337,9 +337,9 @@ double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::
   // if Dijkstra's algorithm
   if (use_dijkstra_) return 0.0;
 
-  auto w_d = 1.5;
+  auto w_d = 1.0;
   //auto w_ga = 0.1;
-  auto w_gd = 5.0;
+  auto w_a = 5.5;
   auto current_t = static_cast<int>(node2.t);
   //auto goal_t = node1.t;
   auto direction_t = static_cast<int>(calcAIndex(atan2(static_cast<int>(node1.y)-static_cast<int>(node2.y)
@@ -351,7 +351,7 @@ double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::
   double value = w_d * ( abs(static_cast<int>(node1.x) - static_cast<int>(node2.x)) 
                 + abs (static_cast<int>(node1.y) - static_cast<int>(node2.y)) )
                 //+ w_ga * diff_c2g 
-                + w_gd * diff_c2d; 
+                + w_a * diff_c2d; 
                  //obstacle_map_.data[calcGridIndex(node2)];
 
   return value;
