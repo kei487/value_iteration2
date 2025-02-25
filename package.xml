@@ -16,6 +16,8 @@
   <depend>nav2_msgs</depend>
   <depend>nav2_util</depend>
   <depend>grid_map_msgs</depend>
+  <depend>grid_map_core</depend>
+  <depend>grid_map_ros</depend>
   <depend>cv_bridge</depend>
   <depend>visualization_msgs</depend>
   <depend>value_iteration2_astar_msgs</depend>
