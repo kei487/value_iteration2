@@ -303,7 +303,7 @@ void ValueIterator::setState(const nav_msgs::msg::OccupancyGrid &map, double saf
 	for(int y=0; y<cell_num_y_; y++)
 		for(int x=0; x<cell_num_x_; x++)
 			for(int t=0; t<cell_num_t_; t++){
-				if(y==379&&x==5410) RCUTILS_LOG_INFO("y:%d x:%d t:%d",y,x,t);
+			//	if(y==379&&x==5410) RCUTILS_LOG_INFO("y:%d x:%d t:%d",y,x,t);
 				states_.push_back(State(x, y, t, map, margin, safety_radius_penalty, cell_num_x_));
 	}
 	RCUTILS_LOG_INFO("SetState() done");

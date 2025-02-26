@@ -59,7 +59,7 @@ void ViNode::setMap(void)
 	if(map_type == "occupancy"){
 	
 		while (true) {
-			auto client = create_client<nav_msgs::srv::GetMap>("/map_server/map");
+			auto client = create_client<nav_msgs::srv::GetMap>("/map_server_nav/map");
 			while (!client->wait_for_service(1s)) {
 				if (!rclcpp::ok()) {
 					RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for map.");
