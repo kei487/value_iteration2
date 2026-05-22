@@ -84,6 +84,8 @@ protected:
 	geometry_msgs::msg::Quaternion map_origin_quat_;
 	const static unsigned char resolution_xy_bit_ = 6;
 	const static unsigned char resolution_t_bit_ = 6;
+	nav_msgs::msg::OccupancyGrid inflated_map;
+	std::vector<std::pair<int, int>> inflated_record;
 public:
 	const static unsigned char prob_base_bit_ = resolution_xy_bit_*2+resolution_t_bit_;
 	const static uint64_t prob_base_ = 1<<prob_base_bit_;

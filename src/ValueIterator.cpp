@@ -38,6 +38,12 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 	map_origin_y_ = map.info.origin.position.y;
 	map_origin_quat_ = map.info.origin.orientation;
 
+    //obstacle inflation
+	RCUTILS_LOG_INFO("obstacle inflation START");
+	inflated_map = map;
+	inflateObstacle(map, );
+	RCUTILS_LOG_INFO("obstacle inflation DONE");
+
 	RCUTILS_LOG_INFO("SET STATES START");
 	setState(map, safety_radius, safety_radius_penalty);
 	setStateTransition();
@@ -45,6 +51,17 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 	RCUTILS_LOG_INFO("SET STATES END");
 
 	return true;
+}
+
+void ValueIterator::inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, ){
+	int loop_cnt=0;
+	while(true){
+		cv2.eroded(inflated_map, )
+		inflated_record.push_back(loop_cnt, cv2.NonZero(inflated_map));
+		if(){
+
+		}
+	}
 }
 
 void ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
