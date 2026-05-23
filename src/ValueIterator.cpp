@@ -59,20 +59,27 @@ void ValueIterator::inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, 
   double white_ratio = 0.5
   double inflated_threshold = cv::countNonZero(map);
   cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
-	// マップの用意
-  nav_msgs::msg::OccupancyGrid map_copy = map;
-  nav_msgs::msg::OccupancyGrid map_copy_tmp;
-  inflated_map = map;
   //二値化処理
+  cv::Mat binary(map.info.width, map.info.height, CV_8UC1);
+  const int8_t occupied_threshold = 174; //どこかに変数あったはず
+  for (size_t i=0; i<msg.data.size(); i++){
+    binary.data = (msg.data[i] > occupied_threshold) ? 255 : 0;
+  }
+	// マップの用意
+  cv::Mat binary_copy = binary.clone();
+  cv::Mat binary_copy_tmp;
+  inflated_map = map;
+  //膨張処理
 	while(true){
-		cv::eroded(map_copy_tmp, map_copy, elemnt)
+		cv::eroded(binary_copy_tmp, binary_copy, elemnt)
     loop_cnt++;
-    cv::add(inflated_map, inflated_map, cv::substract(map_copy_tmp, map_copy)*loop_cnt/255);
-    map_copy = map_copy_tmp;
-    inflated_ratio = cv::countNonZero(map_copy);
+    cv::add(inflated_map, inflated_map, cv::substract(binary_copy_tmp, binary_copy)*loop_cnt/255);
+    binary_copy = binary_copy_tmp;
+    inflated_ratio = cv::countNonZero(binary_copy);
 		inflated_record.push_back(loop_cnt, inflated_ratio);
 		if(inflated_ratio > inflated_threshold || loop_cnt > 255) break;
 	}
+
 }
 
 void ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
