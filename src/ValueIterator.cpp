@@ -2,6 +2,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
+#include <opencv2/opencv.hpp>
 /*
 #include <thread>
 */
@@ -40,8 +41,7 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 
     //obstacle inflation
 	RCUTILS_LOG_INFO("obstacle inflation START");
-	inflated_map = map;
-	inflateObstacle(map, );
+	inflateObstacle(inflated_map, map);
 	RCUTILS_LOG_INFO("obstacle inflation DONE");
 
 	RCUTILS_LOG_INFO("SET STATES START");
@@ -53,14 +53,25 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 	return true;
 }
 
-void ValueIterator::inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, ){
+void ValueIterator::inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, const nav_msgs::msg::OccupancyGrid map){
+  // 変数設定
 	int loop_cnt=0;
+  double white_ratio = 0.5
+  double inflated_threshold = cv::countNonZero(map);
+  cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
+	// マップの用意
+  nav_msgs::msg::OccupancyGrid map_copy = map;
+  nav_msgs::msg::OccupancyGrid map_copy_tmp;
+  inflated_map = map;
+  //二値化処理
 	while(true){
-		cv2.eroded(inflated_map, )
-		inflated_record.push_back(loop_cnt, cv2.NonZero(inflated_map));
-		if(){
-
-		}
+		cv::eroded(map_copy_tmp, map_copy, elemnt)
+    loop_cnt++;
+    cv::add(inflated_map, inflated_map, cv::substract(map_copy_tmp, map_copy)*loop_cnt/255);
+    map_copy = map_copy_tmp;
+    inflated_ratio = cv::countNonZero(map_copy);
+		inflated_record.push_back(loop_cnt, inflated_ratio);
+		if(inflated_ratio > inflated_threshold || loop_cnt > 255) break;
 	}
 }
 
