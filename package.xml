@@ -16,8 +16,10 @@
   <depend>nav2_msgs</depend>
   <depend>nav2_util</depend>
   <depend>grid_map_msgs</depend>
+  <depend>grid_map_core</depend>
   <depend>cv_bridge</depend>
   <depend>visualization_msgs</depend>
+  <depend>open_cv</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

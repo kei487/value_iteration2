@@ -54,31 +54,38 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 }
 
 void ValueIterator::inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, const nav_msgs::msg::OccupancyGrid map){
-  // 変数設定
-	int loop_cnt=0;
-  double white_ratio = 0.5
-  double inflated_threshold = cv::countNonZero(map);
-  cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
   //二値化処理
   cv::Mat binary(map.info.width, map.info.height, CV_8UC1);
-  const int8_t occupied_threshold = 174; //どこかに変数あったはず
-  for (size_t i=0; i<msg.data.size(); i++){
-    binary.data = (msg.data[i] > occupied_threshold) ? 255 : 0;
+  const int occupied_threshold = 174; //どこかに変数あったはず
+  for (size_t i=0; i<map.data.size(); i++){
+    binary.data[i] = (map.data[i] > occupied_threshold) ? 255 : 0;
   }
-	// マップの用意
+  // 変数設定
+  int loop_cnt=0;
+  double white_ratio = 0.5;
+  int base_white = cv::countNonZero(binary);
+  double inflated_threshold = base_white*white_ratio;
+  cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
+  double inflated_ratio;
+  // マップの用意
   cv::Mat binary_copy = binary.clone();
-  cv::Mat binary_copy_tmp;
+  cv::Mat binary_copy_tmp, sub_erode, inflated_map_cv;
   inflated_map = map;
   //膨張処理
 	while(true){
-		cv::eroded(binary_copy_tmp, binary_copy, elemnt)
-    loop_cnt++;
-    cv::add(inflated_map, inflated_map, cv::substract(binary_copy_tmp, binary_copy)*loop_cnt/255);
-    binary_copy = binary_copy_tmp;
-    inflated_ratio = cv::countNonZero(binary_copy);
-		inflated_record.push_back(loop_cnt, inflated_ratio);
+		cv::erode(binary_copy_tmp, binary_copy, element);
+    	loop_cnt++;
+		cv::subtract(binary_copy_tmp, binary_copy, sub_erode);
+    	cv::add(inflated_map_cv, sub_erode*loop_cnt/255, inflated_map_cv);
+    	binary_copy = binary_copy_tmp;
+    	inflated_ratio = cv::countNonZero(binary_copy)/base_white;
+		inflated_record.push_back(std::make_pair(loop_cnt, inflated_ratio));
 		if(inflated_ratio > inflated_threshold || loop_cnt > 255) break;
 	}
+	//inflated_mapへの書き込み
+    for (size_t index = 0; index < inflated_map.data.size(); ++index) {
+        inflated_map.data[index] =  inflated_map_cv.data[index];
+    }
 
 }
 

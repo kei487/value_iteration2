@@ -49,6 +49,7 @@ public:
 	void setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
 		/*double safety_radius, double safety_radius_penalty,*/
 		double goal_margin_radius, int goal_margin_theta);
+	void inflateObstacle(nav_msgs::msg::OccupancyGrid &inflated_map, const nav_msgs::msg::OccupancyGrid map);
 protected:
 	void setStateValues(void);
 	void setStateTransitionWorker(int it);
@@ -85,7 +86,7 @@ protected:
 	const static unsigned char resolution_xy_bit_ = 6;
 	const static unsigned char resolution_t_bit_ = 6;
 	nav_msgs::msg::OccupancyGrid inflated_map;
-	std::vector<std::pair<int, int>> inflated_record;
+	std::vector<std::pair<int, double>> inflated_record;
 public:
 	const static unsigned char prob_base_bit_ = resolution_xy_bit_*2+resolution_t_bit_;
 	const static uint64_t prob_base_ = 1<<prob_base_bit_;
