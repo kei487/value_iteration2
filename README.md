@@ -87,8 +87,12 @@ Give the goal to topic `/goal_pose`. The planner immediately starts working and 
     * radius of the goal on xy-plane
 * ~goal_margin_theta (int, default: 10[deg]) 
     * radius of the goal on theta-axis
-* ~map_type (string, "cost" or "occupancy", default: occupancy, "cost" is not imported to this version) 
+* map_type (string, "cost" or "occupancy", default: occupancy) 
     * choice of map for setting immediate costs and occupancy (please read the Maps section)
+* map_service (string, default: `/map_server/map`)
+    * GetMap service used in occupancy mode
+* cost_map_service (string, default: `/cost_map_server/map`)
+    * GetMap service used in cost mode
 
 #### Maps
 
@@ -99,16 +103,23 @@ We can choose two types of maps for initializing parametes of states.
 A cost map is created from an occupancy grid map. Occupied cells are marked as roped-off area. Moreover, cells near occupied ones are given immediate penalty. The near cells and the value of the penalty are controlled through the following parametes. 
 
 * parapeters
-    * ~safety_radius (double, default: 0.2[m]) 
+    * safety_radius (double, default: 0.2[m]) 
         * distance that should be kept between the center of the robot and an occupancy grid 
-    * ~safety_radius_penalty (double, default: 30[s], max: 1,000,000,000[s]) 
+    * safety_radius_penalty (double, default: 30[s], max: 1,000,000,000[s]) 
         * immediate penality (negative immediate reward in the field of reinforcement learning) when the robot invades the safety radius. 
 
-##### cost mode (still not imported to this version):
+##### cost mode:
 
-We can also use a "cost map," which contains the immediate cost of every cell. This map should be written with "[Raw mode](http://wiki.ros.org/map_server#Raw)". In a map, cells given 255 are regarded as roped-off cells. Cells with other values are free cells but are given the values as their immediate costs. 
+We can also use a "cost map," which contains the immediate cost of every cell. This map should be written with "[Raw mode](https://docs.nav2.org/configuration/packages/configuring-map-server.html)". 
 
-There are an information file (`cost.yaml`) and a map file (`cost.pgm`) in the `maps` directory. The information file must contains the line `mode: raw` as shown below.
+Cell value semantics in cost mode:
+
+* `0`–`100`: free cells. The value is used as an immediate cost [s] in addition to the per-step base cost (1[s]).
+* otherwise (`101`–`255`, or unknown): prohibited cells.
+
+Free cells within `safety_radius` of a prohibited cell additionally receive `safety_radius_penalty`.
+
+There are an information file (`cost.yaml`) and a map file (`cost.pgm`) in the `maps` directory. The information file must contain the line `mode: raw` as shown below.
 
 ```
 image: ./cost.pgm
@@ -120,14 +131,13 @@ free_thresh: 0.196    #not used
 mode: raw
 ```
 
-`vi_node` reads a cost map from a service `cost_map`. In `launch/vi_turtle_online.launch`, you can find the following lines so as to provice the cost map through `cost_map`. 
+`vi_node` reads a cost map from the service specified by `cost_map_service` (default: `/cost_map_server/map`). Launch with cost mode as follows.
 
+```bash
+$ ros2 launch value_iteration2 turtle.launch.py map_type:=cost
 ```
-  <node pkg="map_server" name="cost_map" type="map_server" args="$(find value_iteration)/maps/cost.yaml">
-    <remap from="static_map" to="cost_map" />
-    <remap from="map" to="cost_map_for_vi" />  <!-- This line avoids this node to provide the map to RViz. -->
-  </node>
-```
+
+This starts a dedicated `nav2_map_server` named `cost_map_server` that loads `maps/cost.yaml`, remaps its `map` topic to `cost_map_for_vi` (so it does not overwrite the occupancy map used by localization/RViz), and activates it through a lifecycle manager.
 
 ## Notes
 

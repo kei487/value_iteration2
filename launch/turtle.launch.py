@@ -1,16 +1,23 @@
 import launch, os
 from ament_index_python.packages import get_package_share_directory
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.actions import DeclareLaunchArgument, GroupAction
 from launch_ros.actions import Node
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
-
-from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
+from launch.conditions import IfCondition
 
 
 def generate_launch_description():
     emcl2_share_dir = get_package_share_directory("emcl2")
     vi_share_dir = get_package_share_directory("value_iteration2")
+
+    map_type = LaunchConfiguration('map_type')
+
+    declare_map_type = DeclareLaunchArgument(
+        'map_type',
+        default_value='occupancy',
+        description='Map type for value iteration: occupancy or cost')
 
     config = os.path.join(
       get_package_share_directory('value_iteration2'),
@@ -23,7 +30,7 @@ def generate_launch_description():
             namespace='value_iteration2',
             executable='vi_node',
             name='vi_node',
-            parameters=[config],
+            parameters=[config, {'map_type': map_type}],
         )
 
     emcl2_launch = IncludeLaunchDescription(
@@ -35,6 +42,27 @@ def generate_launch_description():
         )
     )
 
+    cost_map_yaml = os.path.join(vi_share_dir, 'maps', 'cost.yaml')
+    cost_map_nodes = GroupAction(
+        condition=IfCondition(PythonExpression(["'", map_type, "' == 'cost'"])),
+        actions=[
+            Node(
+                package='nav2_map_server',
+                executable='map_server',
+                name='cost_map_server',
+                parameters=[{'yaml_filename': cost_map_yaml}],
+                remappings=[('map', 'cost_map_for_vi')],
+                output='screen'),
+            Node(
+                package='nav2_lifecycle_manager',
+                executable='lifecycle_manager',
+                name='lifecycle_manager_cost_map',
+                output='screen',
+                parameters=[{'autostart': True},
+                            {'node_names': ['cost_map_server']}]),
+        ]
+    )
+
     rviz = Node(
         package='rviz2',
         executable='rviz2',
@@ -42,7 +70,9 @@ def generate_launch_description():
         arguments=['-d', vi_share_dir + '/config/config.rviz'])
 
     return launch.LaunchDescription([
+        declare_map_type,
         emcl2_launch,
+        cost_map_nodes,
         vi_node,
         rviz,
     ])
