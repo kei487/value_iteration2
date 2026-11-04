@@ -18,12 +18,16 @@ public:
 	bool setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
 		double safety_radius, double safety_radius_penalty,
 		double goal_margin_radius, int goal_margin_theta);
+	bool setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
+		double safety_radius, double safety_radius_penalty,
+		double goal_margin_radius, int goal_margin_theta);
 
 	Action *posToAction(double x, double y, double t_rad);
 	void setLocalWindow(double x, double y);
 	void makeLocalValueFunctionMap(nav_msgs::msg::OccupancyGrid &map, int threshold, 
 			double x, double y, double yaw_rad);
 private: 
+	void initLocalWindow(void);
 	void localValueIterationLoop(void);
 	bool inLocalArea(int ix, int iy);
 	uint64_t actionCostLocal(State &s, Action &a);

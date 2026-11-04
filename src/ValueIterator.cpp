@@ -1,10 +1,9 @@
 #include "value_iteration2/ValueIterator.h"
 #include "rclcpp/rclcpp.hpp"
+#if 0
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
-/*
-#include <thread>
-*/
+#endif
 
 namespace value_iteration2 {
 
@@ -47,10 +46,14 @@ bool ValueIterator::setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, i
 	return true;
 }
 
-void ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
-		/*double safety_radius, double safety_radius_penalty,*/
+bool ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
+		double safety_radius, double safety_radius_penalty,
 		double goal_margin_radius, int goal_margin_theta)
 {
+	if ( map.info.width <= 0 || map.info.height <= 0 || map.info.resolution < 0.0001 )
+		return false;
+
+	RCUTILS_LOG_INFO("SET COST MAP");
 	cell_num_t_ = theta_cell_num;
 	goal_margin_radius_ = goal_margin_radius;
 	goal_margin_theta_ = goal_margin_theta;
@@ -65,8 +68,10 @@ void ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int th
 	map_origin_y_ = map.info.origin.position.y;
 	map_origin_quat_ = map.info.origin.orientation;
 
+	RCUTILS_LOG_INFO("SET STATES START");
 	states_.clear();
-	//int margin = (int)ceil(safety_radius/xy_resolution_);
+	int margin = (int)ceil(safety_radius/xy_resolution_);
+	uint64_t safety_penalty = (uint64_t)(safety_radius_penalty * ValueIterator::prob_base_);
 
 	for(int y=0; y<cell_num_y_; y++)
 		for(int x=0; x<cell_num_x_; x++){
@@ -75,8 +80,34 @@ void ValueIterator::setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int th
 				states_.push_back(State(x, y, t, cost));
 		}
 
+	/* Add safety_radius_penalty to free cells near prohibited (cost > 100) cells */
+	for(int y=0; y<cell_num_y_; y++){
+		for(int x=0; x<cell_num_x_; x++){
+			if(not states_[toIndex(x, y, 0)].free_)
+				continue;
+
+			bool near_prohibited = false;
+			for(int iy=y-margin; iy<=y+margin && not near_prohibited; iy++){
+				for(int ix=x-margin; ix<=x+margin; ix++){
+					if(not inMapArea(ix, iy))
+						continue;
+					if(not states_[toIndex(ix, iy, 0)].free_){
+						near_prohibited = true;
+						break;
+					}
+				}
+			}
+			if(near_prohibited){
+				for(int t=0; t<cell_num_t_; t++)
+					states_[toIndex(x, y, t)].penalty_ += safety_penalty;
+			}
+		}
+	}
+
 	setStateTransition();
 	setSweepOrders();
+	RCUTILS_LOG_INFO("SET STATES END");
+	return true;
 }
 
 bool ValueIterator::finished(std_msgs::msg::UInt32MultiArray &sweep_times, std_msgs::msg::Float32MultiArray &deltas)
