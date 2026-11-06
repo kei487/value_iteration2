@@ -93,6 +93,12 @@ Give the goal to topic `/goal_pose`. The planner immediately starts working and 
     * GetMap service used in occupancy mode
 * cost_map_service (string, default: `/cost_map_server/map`)
     * GetMap service used in cost mode
+* local_cost_source (string, "scan" or "costmap", default: scan)
+    * source of the online local penalty. `scan` uses `/scan`. `costmap` uses a Nav2 local costmap.
+* local_costmap_topic (string, default: `/local_costmap/costmap`)
+    * OccupancyGrid topic used when `local_cost_source` is `costmap`
+* local_cost_scale (double, default: 1.0[s])
+    * seconds added to `local_penalty_` per costmap cell value in `1`–`99`. Value `100` or higher is lethal and uses the same large penalty as a laser hit (`2048`[s]). Unknown (`-1`) is ignored. Costs are sampled over each value-iteration cell at the costmap resolution and the maximum is kept. The local window stays 1[m].
 
 #### Maps
 

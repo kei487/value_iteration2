@@ -170,6 +170,60 @@ void ValueIteratorLocal::setLocalCost(const sensor_msgs::msg::LaserScan::ConstSh
 	}
 }
 
+void ValueIteratorLocal::setLocalCostFromOccupancyGrid(
+		const nav_msgs::msg::OccupancyGrid &costmap,
+		double origin_x, double origin_y, double origin_yaw, double cost_scale)
+{
+	if(states_.empty() || costmap.info.resolution <= 0.0 || costmap.data.empty())
+		return;
+
+	const double res = costmap.info.resolution;
+	const int width = costmap.info.width;
+	const int height = costmap.info.height;
+	int n = (int)std::ceil(xy_resolution_ / res);
+	if(n < 1)
+		n = 1;
+
+	const double c = std::cos(origin_yaw);
+	const double s = std::sin(origin_yaw);
+	const uint64_t lethal_penalty = 2048ULL << prob_base_bit_;
+
+	for(int iy=local_iy_min_; iy<=local_iy_max_; iy++){
+		for(int ix=local_ix_min_; ix<=local_ix_max_; ix++){
+			int maxv = -1;
+			for(int sj=0; sj<n; sj++){
+				for(int si=0; si<n; si++){
+					double mx = map_origin_x_ + (ix + (si + 0.5) / n) * xy_resolution_;
+					double my = map_origin_y_ + (iy + (sj + 0.5) / n) * xy_resolution_;
+					double dx = mx - origin_x;
+					double dy = my - origin_y;
+					double lx =  c * dx + s * dy;
+					double ly = -s * dx + c * dy;
+					int ci = (int)std::floor(lx / res);
+					int cj = (int)std::floor(ly / res);
+					if(ci < 0 || ci >= width || cj < 0 || cj >= height)
+						continue;
+					int idx = cj * width + ci;
+					if(idx < 0 || idx >= (int)costmap.data.size())
+						continue;
+					int v = costmap.data[idx];
+					if(v > maxv)
+						maxv = v;
+				}
+			}
+
+			uint64_t penalty = 0;
+			if(maxv >= 100)
+				penalty = lethal_penalty;
+			else if(maxv > 0)
+				penalty = (uint64_t)(maxv * cost_scale * ValueIterator::prob_base_);
+
+			for(int it=0; it<cell_num_t_; it++)
+				states_[toIndex(ix, iy, it)].local_penalty_ = penalty;
+		}
+	}
+}
+
 uint64_t ValueIteratorLocal::actionCostLocal(State &s, Action &a)
 {
 	uint64_t cost = 0;

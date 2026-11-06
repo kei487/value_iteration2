@@ -11,6 +11,9 @@
     map_type: occupancy
     map_service: /map_server/map
     cost_map_service: /cost_map_server/map
+    local_cost_source: costmap #scan
+    local_costmap_topic: /local_costmap/costmap
+    local_cost_scale: 1.0
 #    action_list:
 #      - name: "forward"
 #        onestep_forward_m: "0.3"

@@ -12,6 +12,8 @@ public:
 	ValueIteratorLocal(std::vector<Action> &actions, int thread_num);
 
 	void setLocalCost(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg, double x, double y, double t);
+	void setLocalCostFromOccupancyGrid(const nav_msgs::msg::OccupancyGrid &costmap,
+		double origin_x, double origin_y, double origin_yaw, double cost_scale);
 	uint64_t valueIterationLocal(State &s);
 	void localValueIterationWorker(void);
 

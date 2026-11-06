@@ -104,15 +104,31 @@ void ViNode::setMap(void)
 void ViNode::setCommunication(void)
 {
 	declare_parameter("online", false);
+	declare_parameter("local_cost_source", "scan");
+	declare_parameter("local_costmap_topic", "/local_costmap/costmap");
+	declare_parameter("local_cost_scale", 1.0);
 	online_ = get_parameter("online").as_bool();
+	local_cost_scale_ = get_parameter("local_cost_scale").as_double();
+	std::string local_cost_source = get_parameter("local_cost_source").as_string();
+	std::string local_costmap_topic = get_parameter("local_costmap_topic").as_string();
 	RCLCPP_INFO(this->get_logger(),"Online: %s", online_ ? "true" : "false");
 
 	if(online_){
 		pub_cmd_vel_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 1);
 
-		sub_laser_scan_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1,
-				std::bind(&ViNode::scanReceived, this, std::placeholders::_1));
-		RCLCPP_INFO(this->get_logger(),"set scan");
+		if(local_cost_source == "costmap"){
+			auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+			sub_local_costmap_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
+					local_costmap_topic, qos,
+					std::bind(&ViNode::localCostmapReceived, this, std::placeholders::_1));
+			RCLCPP_INFO(this->get_logger(),"local cost source: costmap (%s)", local_costmap_topic.c_str());
+		}else{
+			if(local_cost_source != "scan")
+				RCLCPP_ERROR(this->get_logger(), "unknown local_cost_source '%s', using scan", local_cost_source.c_str());
+			sub_laser_scan_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1,
+					std::bind(&ViNode::scanReceived, this, std::placeholders::_1));
+			RCLCPP_INFO(this->get_logger(),"local cost source: scan");
+		}
 		sub_goal_ = create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 1,
 				std::bind(&ViNode::goalReceived, this, std::placeholders::_1));
 
@@ -149,6 +165,32 @@ void ViNode::setActions(void)
 void ViNode::scanReceived(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg)
 {
 	vi_->setLocalCost(msg, x_, y_, yaw_);
+}
+
+void ViNode::localCostmapReceived(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg)
+{
+	if(msg->data.empty() || msg->info.resolution <= 0.0)
+		return;
+
+	geometry_msgs::msg::PoseStamped origin_in, origin_map;
+	origin_in.header = msg->header;
+	origin_in.pose = msg->info.origin;
+	try{
+		if(msg->header.frame_id.empty() || msg->header.frame_id == "map"){
+			origin_map = origin_in;
+		}else{
+			origin_map = tf_buffer_->transform(origin_in, "map", tf2::durationFromSec(0.05));
+		}
+	}catch(const tf2::TransformException &e){
+		RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+				"local costmap transform failed: %s", e.what());
+		return;
+	}
+
+	double yaw = tf2::getYaw(origin_map.pose.orientation);
+	vi_->setLocalWindow(x_, y_);
+	vi_->setLocalCostFromOccupancyGrid(*msg,
+			origin_map.pose.position.x, origin_map.pose.position.y, yaw, local_cost_scale_);
 }
 
 void ViNode::goalReceived(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg) 

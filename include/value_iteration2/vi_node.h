@@ -60,6 +60,7 @@ private:
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;
 	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_value_function_;
 	rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_laser_scan_;
+	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_local_costmap_;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_goal_;
 
         std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
@@ -76,6 +77,7 @@ private:
 
 	*/
 	void scanReceived(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg);
+	void localCostmapReceived(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
 	void goalReceived(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
 
 	void setActions(void);
@@ -86,6 +88,7 @@ private:
 
 	//string status_;
 	bool online_;
+	double local_cost_scale_;
 
 	int cost_drawing_threshold_;
 };
