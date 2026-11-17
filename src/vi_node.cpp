@@ -44,87 +44,97 @@ void ViNode::setMap(void)
 {
 	declare_parameter("theta_cell_num", 60);
 	declare_parameter("safety_radius", 0.2);
-	declare_parameter("safety_radius_penalty", 30.0);
-	declare_parameter("goal_margin_radius", 0.5);
+	declare_parameter("safety_radius_penalty", 100.0);
+	declare_parameter("goal_margin_radius", 0.2);
 	declare_parameter("goal_margin_theta", 10);
 	declare_parameter("map_type", "occupancy");
+	declare_parameter("map_service", "/map_server/map");
+	declare_parameter("cost_map_service", "/cost_map_server/map");
 
 	int theta_cell_num = get_parameter("theta_cell_num").as_int();
 	double safety_radius = get_parameter("safety_radius").as_double();
 	double safety_radius_penalty = get_parameter("safety_radius_penalty").as_double();
 	double goal_margin_radius = get_parameter("goal_margin_radius").as_double();
 	int goal_margin_theta = get_parameter("goal_margin_theta").as_int();
-
 	std::string map_type = get_parameter("map_type").as_string();
+	std::string map_service = get_parameter("map_service").as_string();
+	std::string cost_map_service = get_parameter("cost_map_service").as_string();
+
+	std::string service_name;
+	bool use_cost = false;
 	if(map_type == "occupancy"){
-	
-		while (true) {
-			auto client = create_client<nav_msgs::srv::GetMap>("/map_server/map");
-			while (!client->wait_for_service(1s)) {
-				if (!rclcpp::ok()) {
-					RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for map.");
-					return;
-				}
-				RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "map server not available, waiting again...");
-			}
-		
-			auto req = std::make_shared<nav_msgs::srv::GetMap::Request>();
-			auto res = client->async_send_request(req);
-			try{
-			if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), res) 
-					== rclcpp::FutureReturnCode::SUCCESS) {
-				RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "get map!!!!!!1");
-				if (vi_->setMapWithOccupancyGrid(map_for_astar_ = res.get()->map,
-					theta_cell_num, safety_radius, safety_radius_penalty,
-					goal_margin_radius, goal_margin_theta)) {
-					RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "get checked!!!!!!1");
-					break;
-				}
-			} else {
-				RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call map service");
-			}
-			}catch (const std::future_error& e) {
-				RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Future error(setMap): %s", e.what());
-			}
-			sleep(1);
-		}
-
-	/*
+		service_name = map_service;
 	}else if(map_type == "cost"){
-		while(!ros::service::waitForService("/cost_map", ros::Duration(3.0))){
-			ROS_INFO("Waiting for cost_map");
+		service_name = cost_map_service;
+		use_cost = true;
+	}else{
+		RCLCPP_ERROR(this->get_logger(), "NO SUPPORT MAP TYPE: %s", map_type.c_str());
+		exit(1);
+	}
+
+	while (true) {
+		auto client = create_client<nav_msgs::srv::GetMap>(service_name);
+		while (!client->wait_for_service(1s)) {
+			if (!rclcpp::ok()) {
+				RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for map.");
+				return;
+			}
+			RCLCPP_INFO(this->get_logger(), "%s not available, waiting again...", service_name.c_str());
 		}
 
-		ros::ServiceClient client = nh_.serviceClient<nav_msgs::GetMap>("/cost_map");
-		nav_msgs::GetMap::Request req;
-		if(not client.call(req, res)){
-			ROS_ERROR("cost_map not working");
-			exit(1);
+		auto req = std::make_shared<nav_msgs::srv::GetMap::Request>();
+		auto res = client->async_send_request(req);
+
+		try{
+		if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), res)
+				== rclcpp::FutureReturnCode::SUCCESS) {
+			bool ok = use_cost
+				? vi_->setMapWithCostGrid(res.get()->map,
+					theta_cell_num, safety_radius, safety_radius_penalty,
+					goal_margin_radius, goal_margin_theta)
+				: vi_->setMapWithOccupancyGrid(map_for_astar_ = res.get()->map,
+					theta_cell_num, safety_radius, safety_radius_penalty,
+					goal_margin_radius, goal_margin_theta);
+			if (ok)
+				break;
+		} else {
+			RCLCPP_ERROR(this->get_logger(), "Failed to call map service: %s", service_name.c_str());
 		}
-		for(int i=0;i<100;i++)
-			ROS_INFO("%u", (unsigned int)(res.map.data[i] & 0xFF));
-	
-		vi_->setMapWithCostGrid(res.map, theta_cell_num, safety_radius, safety_radius_penalty,
-			goal_margin_radius, goal_margin_theta);
-	*/
-	}else{
-		RCLCPP_INFO(this->get_logger(), "NO SUPPORT MAP TYPE");
-		exit(1);
+		}catch (const std::future_error& e) {
+			RCLCPP_ERROR(this->get_logger(), "Future error(setMap): %s", e.what());
+		}
+		sleep(1);
 	}
 }
 
 void ViNode::setCommunication(void)
 {
 	declare_parameter("online", false);
+	declare_parameter("local_cost_source", "scan");
+	declare_parameter("local_costmap_topic", "/local_costmap/costmap");
+	declare_parameter("local_cost_scale", 1.0);
 	online_ = get_parameter("online").as_bool();
+	local_cost_scale_ = get_parameter("local_cost_scale").as_double();
+	std::string local_cost_source = get_parameter("local_cost_source").as_string();
+	std::string local_costmap_topic = get_parameter("local_costmap_topic").as_string();
 	RCLCPP_INFO(this->get_logger(),"Online: %s", online_ ? "true" : "false");
 
 	if(online_){
 		pub_cmd_vel_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 1);
 
-		sub_laser_scan_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1,
-				std::bind(&ViNode::scanReceived, this, std::placeholders::_1));
-		RCLCPP_INFO(this->get_logger(),"set scan");
+		if(local_cost_source == "costmap"){
+			auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+			sub_local_costmap_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
+					local_costmap_topic, qos,
+					std::bind(&ViNode::localCostmapReceived, this, std::placeholders::_1));
+			RCLCPP_INFO(this->get_logger(),"local cost source: costmap (%s)", local_costmap_topic.c_str());
+		}else{
+			if(local_cost_source != "scan")
+				RCLCPP_ERROR(this->get_logger(), "unknown local_cost_source '%s', using scan", local_cost_source.c_str());
+			sub_laser_scan_ = create_subscription<sensor_msgs::msg::LaserScan>("/scan", 1,
+					std::bind(&ViNode::scanReceived, this, std::placeholders::_1));
+			RCLCPP_INFO(this->get_logger(),"local cost source: scan");
+		}
 		sub_goal_ = create_subscription<geometry_msgs::msg::PoseStamped>("/goal_pose", 1,
 				std::bind(&ViNode::goalReceived, this, std::placeholders::_1));
 
@@ -166,6 +176,32 @@ void ViNode::setActions(void)
 void ViNode::scanReceived(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg)
 {
 	vi_->setLocalCost(msg, x_, y_, yaw_);
+}
+
+void ViNode::localCostmapReceived(const nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg)
+{
+	if(msg->data.empty() || msg->info.resolution <= 0.0)
+		return;
+
+	geometry_msgs::msg::PoseStamped origin_in, origin_map;
+	origin_in.header = msg->header;
+	origin_in.pose = msg->info.origin;
+	try{
+		if(msg->header.frame_id.empty() || msg->header.frame_id == "map"){
+			origin_map = origin_in;
+		}else{
+			origin_map = tf_buffer_->transform(origin_in, "map", tf2::durationFromSec(0.05));
+		}
+	}catch(const tf2::TransformException &e){
+		RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+				"local costmap transform failed: %s", e.what());
+		return;
+	}
+
+	double yaw = tf2::getYaw(origin_map.pose.orientation);
+	vi_->setLocalWindow(x_, y_);
+	vi_->setLocalCostFromOccupancyGrid(*msg,
+			origin_map.pose.position.x, origin_map.pose.position.y, yaw, local_cost_scale_);
 }
 
 void ViNode::goalReceived(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg) 

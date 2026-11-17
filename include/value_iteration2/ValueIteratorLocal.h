@@ -12,10 +12,15 @@ public:
 	ValueIteratorLocal(std::vector<Action> &actions, int thread_num);
 
 	void setLocalCost(const sensor_msgs::msg::LaserScan::ConstSharedPtr msg, double x, double y, double t);
+	void setLocalCostFromOccupancyGrid(const nav_msgs::msg::OccupancyGrid &costmap,
+		double origin_x, double origin_y, double origin_yaw, double cost_scale);
 	uint64_t valueIterationLocal(State &s);
 	void localValueIterationWorker(void);
 
 	bool setMapWithOccupancyGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
+		double safety_radius, double safety_radius_penalty,
+		double goal_margin_radius, int goal_margin_theta);
+	bool setMapWithCostGrid(nav_msgs::msg::OccupancyGrid &map, int theta_cell_num,
 		double safety_radius, double safety_radius_penalty,
 		double goal_margin_radius, int goal_margin_theta);
 
@@ -24,6 +29,7 @@ public:
 	void makeLocalValueFunctionMap(nav_msgs::msg::OccupancyGrid &map, int threshold, 
 			double x, double y, double yaw_rad);
 private: 
+	void initLocalWindow(void);
 	void localValueIterationLoop(void);
 	bool inLocalArea(int ix, int iy);
 	uint64_t actionCostLocal(State &s, Action &a);

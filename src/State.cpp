@@ -38,10 +38,12 @@ State::State(int x, int y, int theta, unsigned int cost)
 	iy_ = y;
 	it_ = theta;
 	total_cost_ = ValueIterator::max_cost_;
+	local_penalty_ = 0;
 	final_state_ = false;
 	optimal_action_ = NULL;
-	free_ = (cost != 255);
-	penalty_ = free_ ? (cost << ValueIterator::prob_base_bit_) : 0;
+	/* 0-100: free cell with immediate cost; otherwise: prohibited */
+	free_ = (cost <= 100);
+	penalty_ = free_ ? (ValueIterator::prob_base_ + (cost << ValueIterator::prob_base_bit_)) : 0;
 }
 
 }
