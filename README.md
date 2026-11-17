@@ -147,6 +147,15 @@ $ ros2 launch value_iteration2 turtle.launch.py map_type:=cost
 
 This starts a dedicated `nav2_map_server` named `cost_map_server` that loads `maps/cost.yaml`, remaps its `map` topic to `cost_map_for_vi` (so it does not overwrite the occupancy map used by localization/RViz), and activates it through a lifecycle manager.
 
+### A\* on the costmap
+
+`vi_node` publishes the map used for planning to `/costmap_2d`, and `vi_planner` runs A\* on that grid.
+
+* cost mode: the raw cost map is used as-is (`0`–`100` traversable with cost, `>100` lethal)
+* occupancy mode: occupied/unknown cells are converted to lethal (`101`) before publishing
+* A\* edge cost = motion length + `traversal_cost_weight` × cell cost, so lower-cost regions are preferred
+* Planner parameters are in `config/planner_params.yaml` (`lethal_cost_threshold`, `traversal_cost_weight`, `robot_radius`)
+
 ## Notes
 
 ### What's the cost means?

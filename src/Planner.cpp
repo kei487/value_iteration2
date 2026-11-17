@@ -4,6 +4,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace value_iteration2
 {
@@ -16,9 +17,7 @@ vi_planner::vi_planner(const rclcpp::NodeOptions & options) : Node("vi_planner",
   initPublisher();
   initSubscriber();
   initServiceServer();
-  //initServiceClient();
   RCLCPP_INFO(this->get_logger(), "vi_planner initialize done!");
-  //getCostMap2D();
 }
 
 void vi_planner::getParam()
@@ -28,12 +27,20 @@ void vi_planner::getParam()
   this->declare_parameter("update_path_weight", 0.05);
   this->declare_parameter("smooth_path_weight", 0.8);
   this->declare_parameter("iteration_delta_threshold", 1.e-6);
+  this->declare_parameter("lethal_cost_threshold", 100);
+  this->declare_parameter("traversal_cost_weight", 1.0);
+  this->declare_parameter("robot_radius", 0.1);
 
   this->get_parameter("use_dijkstra", use_dijkstra_);
   this->get_parameter("publish_searched_map", publish_searched_map_);
   this->get_parameter("update_path_weight", update_path_weight_);
   this->get_parameter("smooth_path_weight", smooth_path_weight_);
   this->get_parameter("iteration_delta_threshold", iteration_delta_threshold_);
+  int lethal = 100;
+  this->get_parameter("lethal_cost_threshold", lethal);
+  lethal_cost_threshold_ = static_cast<unsigned int>(lethal);
+  this->get_parameter("traversal_cost_weight", traversal_cost_weight_);
+  this->get_parameter("robot_radius", robot_radius_);
 }
 
 void vi_planner::initPublisher()
@@ -47,19 +54,19 @@ void vi_planner::initPublisher()
 void vi_planner::initSubscriber()
 {
   auto costmap_2d_callback = [this](const nav_msgs::msg::OccupancyGrid::UniquePtr msg) {
-    // RCLCPP_INFO(
-    //   this->get_logger(), "Subscribed message at address: %p", static_cast<void *>(msg.get()));
-    RCLCPP_INFO(this->get_logger(), "vi_planner get topic!");
+    RCLCPP_INFO(this->get_logger(), "vi_planner get costmap (%ux%u)",
+      msg->info.width, msg->info.height);
     this->obstacle_map_ = *msg;
     initPlanner();
   };
 
+  auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
   rclcpp::SubscriptionOptions options;
   options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
   costmap_2d_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-    "/costmap_2d", 2, costmap_2d_callback, options);
+    "/costmap_2d", qos, costmap_2d_callback, options);
 
-  RCLCPP_INFO(this->get_logger(), "set subscriver!");
+  RCLCPP_INFO(this->get_logger(), "set subscriber!");
 }
 
 void vi_planner::initServiceServer()
@@ -69,8 +76,13 @@ void vi_planner::initServiceServer()
                     const std::shared_ptr<value_iteration2_astar_msgs::srv::GetPath_Request> request,
                     std::shared_ptr<value_iteration2_astar_msgs::srv::GetPath_Response> response) -> void {
     (void)request_header;
-    // clang-format off
     RCLCPP_INFO(this->get_logger(), "vi_planner planning start");
+    if (obstacle_map_.data.empty() || obstacle_map_.info.width == 0 || obstacle_map_.info.height == 0) {
+      RCLCPP_ERROR(this->get_logger(), "costmap is empty; cannot plan");
+      response->path = nav_msgs::msg::Path();
+      return;
+    }
+
     search_map_ = obstacle_map_;
     request->start.pose.position.x -= obstacle_map_.info.origin.position.x;
     request->start.pose.position.y -= obstacle_map_.info.origin.position.y;
@@ -79,33 +91,24 @@ void vi_planner::initServiceServer()
     search_map_.info.origin.position.x -= obstacle_map_.info.origin.position.x;
     search_map_.info.origin.position.y -= obstacle_map_.info.origin.position.y;
     response->path = planning(
-      request->start.pose.position.x, request->start.pose.position.y, 
+      request->start.pose.position.x, request->start.pose.position.y,
       request->goal.pose.position.x, request->goal.pose.position.y);
-    RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
     for(auto &i : response->path.poses){
       i.pose.position.x += obstacle_map_.info.origin.position.x;
       i.pose.position.y += obstacle_map_.info.origin.position.y;
-      RCLCPP_INFO(this->get_logger(), "path x:%lf, y:%lf",i.pose.position.x, i.pose.position.y);
     }
-    RCLCPP_INFO(this->get_logger(), "vi_planner planning done");
-    initPlanner(); 
+    RCLCPP_INFO(this->get_logger(), "vi_planner planning done (%zu poses)",
+      response->path.poses.size());
+    initPlanner();
   };
   get_path_srv_ = create_service<value_iteration2_astar_msgs::srv::GetPath>("get_path", get_path);
-  RCLCPP_INFO(this->get_logger(), "set service sever!");
-
+  RCLCPP_INFO(this->get_logger(), "set service server!");
 }
-
-/*void vi_planner::initServiceClient()
-{
-  get_costmap_2d_map_srv_client_ =
-    this->create_client<value_iteration2_astar_msgs::srv::GetCostMap2D>("get_costmap_2d");
-}*/
 
 void vi_planner::initPlanner()
 {
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting start");
   resolution_ = obstacle_map_.info.resolution;
-  robot_radius_ = 0.1;
   min_x_ = min_y_ = 0;
   max_x_ = x_width_ = obstacle_map_.info.width;
   max_y_ = y_width_ = obstacle_map_.info.height;
@@ -114,56 +117,67 @@ void vi_planner::initPlanner()
   RCLCPP_INFO(this->get_logger(), "vi_planner map setting done");
 }
 
-std::vector<std::tuple<int32_t, int32_t, uint8_t>> vi_planner::getMotionModel()
+std::vector<std::tuple<int32_t, int32_t, double>> vi_planner::getMotionModel()
 {
   // dx, dy, cost
-  return std::vector<std::tuple<int32_t, int32_t, uint8_t>>{
-    {1, 0, 1},
-    {0, 1, 1},
-    {-1, 0, 1},
-    {0, -1, 1},
-    {-1, -1, std::sqrt(2)},
-    {-1, 1, std::sqrt(2)},
-    {1, -1, std::sqrt(2)},
-    {1, 1, std::sqrt(2)}};
+  return std::vector<std::tuple<int32_t, int32_t, double>>{
+    {1, 0, 1.0},
+    {0, 1, 1.0},
+    {-1, 0, 1.0},
+    {0, -1, 1.0},
+    {-1, -1, std::sqrt(2.0)},
+    {-1, 1, std::sqrt(2.0)},
+    {1, -1, std::sqrt(2.0)},
+    {1, 1, std::sqrt(2.0)}};
+}
+
+unsigned int vi_planner::getCellCost(uint32_t index) const
+{
+  if (index >= obstacle_map_.data.size())
+    return lethal_cost_threshold_ + 1;
+  return static_cast<unsigned int>(static_cast<unsigned char>(obstacle_map_.data[index]));
+}
+
+bool vi_planner::isLethal(unsigned int cost) const
+{
+  /* Match value iteration cost mode: 0-100 free (with cost), otherwise prohibited. */
+  return cost > lethal_cost_threshold_;
 }
 
 nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double gx, double gy)
 {
   RCLCPP_INFO(this->get_logger(), "start x:%lf y:%lf, goal x:%lf y:%lf", sx,sy,gx,gy);
-  RCLCPP_INFO(this->get_logger(), "hight:%lf width:%lf", resolution_*x_width_, resolution_*y_width_);
   auto start_node = value_iteration2::Node(calcXYIndex(sx), calcXYIndex(sy), 0.0, -1);
   auto goal_node = value_iteration2::Node(calcXYIndex(gx), calcXYIndex(gy), 0.0, -1);
+
+  if (!verifyNode(start_node) || !verifyNode(goal_node)) {
+    RCLCPP_ERROR(this->get_logger(), "start or goal is in lethal cost");
+    return nav_msgs::msg::Path();
+  }
 
   std::map<uint32_t, value_iteration2::Node> open_set, closed_set;
   open_set.insert(std::make_pair(calcGridIndex(start_node), start_node));
 
-  //search_map_ = obstacle_map_;
-  RCLCPP_INFO(this->get_logger(), "origin x:%lf y:%lf",search_map_.info.origin.position.x,search_map_.info.origin.position.y);
-  RCLCPP_INFO(this->get_logger(), "start loop");
-  
   while (rclcpp::ok()) {
-    if (open_set.size() == 0) {
-      RCLCPP_ERROR(this->get_logger(), "Open set is empty");
-      rclcpp::shutdown();
+    if (open_set.empty()) {
+      RCLCPP_ERROR(this->get_logger(), "Open set is empty; no path found");
+      return nav_msgs::msg::Path();
     }
 
-    // clang-format off
     auto c_id = [&]() -> uint32_t {
       std::map<uint32_t, double> id_cost_map;
-      for (auto id_node_map : open_set) {
-	      id_cost_map.insert(std::make_pair(
-	        id_node_map.first, open_set[id_node_map.first].cost 
-            + calcHeurisic(goal_node, static_cast<value_iteration2::Node>(open_set[id_node_map.first]))));
+      for (const auto & id_node_map : open_set) {
+        id_cost_map.insert(std::make_pair(
+          id_node_map.first, id_node_map.second.cost
+            + calcHeurisic(goal_node, id_node_map.second)));
       }
 
       return std::min_element(
-	       id_cost_map.begin(), id_cost_map.end(),
-	       [](const auto & a, const auto & b) 
+         id_cost_map.begin(), id_cost_map.end(),
+         [](const auto & a, const auto & b)
          { return a.second < b.second; }
          )->first;
     }();
-    // clang-format on
 
     auto current = open_set[c_id];
 
@@ -175,26 +189,34 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double gx, double
     }
 
     open_set.erase(c_id);
-
-    closed_set.insert(std::make_pair(c_id, current));
+    closed_set[c_id] = current;
 
     for (size_t i = 0; i < motion_.size(); ++i) {
+      auto n_x = static_cast<int32_t>(current.x) + std::get<0>(motion_[i]);
+      auto n_y = static_cast<int32_t>(current.y) + std::get<1>(motion_[i]);
+      if (n_x < 0 || n_y < 0)
+        continue;
+
       auto node = value_iteration2::Node(
-        current.x + std::get<0>(motion_[i]), current.y + std::get<1>(motion_[i]),
+        static_cast<uint32_t>(n_x), static_cast<uint32_t>(n_y),
         current.cost + std::get<2>(motion_[i]), c_id);
 
       auto n_id = calcGridIndex(node);
-
       if (!verifyNode(node)) continue;
-      // check motion
-      search_map_.data[n_id] = 50;
+
+      /* Prefer lower-cost cells on the costmap. */
+      unsigned int cell_cost = getCellCost(n_id);
+      node.cost += traversal_cost_weight_ * static_cast<double>(cell_cost);
+
+      if (n_id < search_map_.data.size())
+        search_map_.data[n_id] = 50;
 
       if (closed_set.find(n_id) != closed_set.end()) continue;
-      if (open_set.find(n_id) == open_set.end())
-        open_set.insert(std::make_pair(n_id, node));
-      else {
-        if (open_set[n_id].cost > node.cost) open_set.insert(std::make_pair(n_id, node));
-      }
+      auto open_it = open_set.find(n_id);
+      if (open_it == open_set.end())
+        open_set[n_id] = node;
+      else if (open_it->second.cost > node.cost)
+        open_it->second = node;
     }
   }
 
@@ -204,19 +226,16 @@ nav_msgs::msg::Path vi_planner::planning(double sx, double sy, double gx, double
 nav_msgs::msg::Path vi_planner::calcFinalPath(
   value_iteration2::Node goal_node, std::map<uint32_t, value_iteration2::Node> closed_set)
 {
-  std::vector<double> rx, ry;
-  rx.push_back(calcGridPosition(goal_node.x));
-  ry.push_back(calcGridPosition(goal_node.y));
-
-  auto parent_index = goal_node.parent_index;
-
   auto plan_path = nav_msgs::msg::Path();
   auto pose_stamp = geometry_msgs::msg::PoseStamped();
 
+  pose_stamp.pose.position.x = calcGridPosition(goal_node.x);
+  pose_stamp.pose.position.y = calcGridPosition(goal_node.y);
+  plan_path.poses.push_back(pose_stamp);
+
+  auto parent_index = goal_node.parent_index;
   while (parent_index != -1) {
     auto n = closed_set[parent_index];
-    rx.push_back(calcGridPosition(n.x));
-    ry.push_back(calcGridPosition(n.y));
     parent_index = n.parent_index;
 
     pose_stamp.pose.position.x = calcGridPosition(n.x);
@@ -237,6 +256,8 @@ nav_msgs::msg::Path vi_planner::calcFinalPath(
 
 void vi_planner::smoothPath(nav_msgs::msg::Path & path)
 {
+  if (path.poses.size() < 3)
+    return;
   auto smoothed_path = smoothOptimization(path);
   path = smoothed_path;
 }
@@ -289,30 +310,36 @@ bool vi_planner::verifyNode(value_iteration2::Node node)
   else if (node.y >= max_y_)
     return false;
 
-  if (obstacle_map_.data[calcGridIndex(node)] == 100) return false;
+  if (isLethal(getCellCost(calcGridIndex(node))))
+    return false;
 
-  //一辺がrobot_radiusの正方形の範囲以内に使えないマスがあればfalse
-  auto grid_robot_radius_ = std::ceil(robot_radius_ / obstacle_map_.info.resolution);
-  for(auto i = node.y - grid_robot_radius_; i < node.y + grid_robot_radius_; i++)
-    for(auto j = node.x - grid_robot_radius_; j < node.x + grid_robot_radius_; j++)
-      if(obstacle_map_.data[i * x_width_ + j] > 10)
+  /* Robot footprint: only lethal cells block (soft costs remain traversable). */
+  auto grid_robot_radius = static_cast<int>(std::ceil(robot_radius_ / resolution_));
+  for (int i = static_cast<int>(node.y) - grid_robot_radius;
+       i <= static_cast<int>(node.y) + grid_robot_radius; ++i) {
+    for (int j = static_cast<int>(node.x) - grid_robot_radius;
+         j <= static_cast<int>(node.x) + grid_robot_radius; ++j) {
+      if (j < static_cast<int>(min_x_) || j >= static_cast<int>(max_x_) ||
+          i < static_cast<int>(min_y_) || i >= static_cast<int>(max_y_))
+        continue;
+      uint32_t idx = static_cast<uint32_t>(i) * x_width_ + static_cast<uint32_t>(j);
+      if (isLethal(getCellCost(idx)))
         return false;
+    }
+  }
 
   return true;
 }
 
 double vi_planner::calcHeurisic(value_iteration2::Node node1, value_iteration2::Node node2)
 {
+  if (use_dijkstra_)
+    return 0.0;
+
   auto w = 1.0;
-  double d = w * std::hypot(
+  return w * std::hypot(
                    static_cast<double>(node1.x) - static_cast<double>(node2.x),
-                   static_cast<double>(node1.y) - static_cast<double>(node2.y)) +
-             obstacle_map_.data[calcGridIndex(node2)];
-
-  // if Dijkstra's algorithm
-  if (use_dijkstra_) d = 0.0;
-
-  return d;
+                   static_cast<double>(node1.y) - static_cast<double>(node2.y));
 }
 
 uint32_t vi_planner::calcXYIndex(double position)
@@ -321,28 +348,6 @@ uint32_t vi_planner::calcXYIndex(double position)
 }
 
 uint32_t vi_planner::calcGridIndex(value_iteration2::Node node) { return node.y * x_width_ + node.x; }
-
-/*
-void vi_planner::getCostMap2D()
-{
-  while (!get_costmap_2d_map_srv_client_->wait_for_service(std::chrono::seconds(1))) {
-    if (!rclcpp::ok()) {
-      RCLCPP_ERROR(this->get_logger(), "client interrupted while waiting for service to appear.");
-    }
-    RCLCPP_INFO(this->get_logger(), "waiting for service to appear...");
-  }
-
-  auto request = std::make_shared<ike_nav_msgs::srv::GetCostMap2D::Request>();
-  using ServiceResponseFuture = rclcpp::Client<ike_nav_msgs::srv::GetCostMap2D>::SharedFuture;
-
-  auto response_received_callback = [this](ServiceResponseFuture future) {
-    auto result = future.get();
-    obstacle_map_ = result.get()->costmap_2d;
-    initPlanner();
-  };
-  auto future_result =
-    get_costmap_2d_map_srv_client_->async_send_request(request, response_received_callback);
-}*/
 
 }  // namespace value_iteration2
 
@@ -354,4 +359,3 @@ int main(int argc, char **argv)
 	rclcpp::spin(node);
 	return 0;
 }
-

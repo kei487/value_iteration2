@@ -29,10 +29,12 @@ ViNode::ViNode() : Node("vi_node")// : private_nh_("~"), yaw_(0.0), x_(0.0), y_(
 void ViNode::init(void)
 {
 	setCommunication();
-        setMap();
+	setStatus("initialize");
+	setMap();
 	RCLCPP_INFO(get_logger(), "!!!!!!!!!!! INIT DONE !!!!!!!!!!ddd");
 	//publish topic /costmap_2d nav_msgs::msg::OccupancyGrid
 	pub_cost_map_->publish(map_for_astar_);
+	setStatus("idle");
 }
 
 ViNode::~ViNode() 
@@ -88,15 +90,27 @@ void ViNode::setMap(void)
 		try{
 		if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), res)
 				== rclcpp::FutureReturnCode::SUCCESS) {
+			auto map = res.get()->map;
 			bool ok = use_cost
-				? vi_->setMapWithCostGrid(res.get()->map,
+				? vi_->setMapWithCostGrid(map,
 					theta_cell_num, safety_radius, safety_radius_penalty,
 					goal_margin_radius, goal_margin_theta)
-				: vi_->setMapWithOccupancyGrid(map_for_astar_ = res.get()->map,
+				: vi_->setMapWithOccupancyGrid(map,
 					theta_cell_num, safety_radius, safety_radius_penalty,
 					goal_margin_radius, goal_margin_theta);
-			if (ok)
+			if (ok) {
+				/* A* searches on a costmap: 0-100 traversable cost, >100 lethal.
+				 * Occupancy grids are converted so occupied/unknown become lethal. */
+				map_for_astar_ = map;
+				if (!use_cost) {
+					for (auto &cell : map_for_astar_.data) {
+						if (cell == 0)
+							continue;
+						cell = 101;
+					}
+				}
 				break;
+			}
 		} else {
 			RCLCPP_ERROR(this->get_logger(), "Failed to call map service: %s", service_name.c_str());
 		}
@@ -146,7 +160,9 @@ void ViNode::setCommunication(void)
 	}
 
 	pub_value_function_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/value_function", 2);
-	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap_2d", 2);
+	auto costmap_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
+	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap_2d", costmap_qos);
+	pub_status_ = create_publisher<std_msgs::msg::String>("/vi_status", costmap_qos);
 
 	decision_timer_ = this->create_wall_timer(100ms, std::bind(&ViNode::decision, this));
 	value_pub_timer_ = this->create_wall_timer(1500ms, std::bind(&ViNode::pubValueFunction, this));
@@ -207,7 +223,20 @@ void ViNode::localCostmapReceived(const nav_msgs::msg::OccupancyGrid::ConstShare
 void ViNode::goalReceived(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg) 
 {
 	vi_->idling_ = false;
+	setStatus("active");
 	executeVi(msg);
+}
+
+void ViNode::setStatus(const std::string &status)
+{
+	if(status_ == status)
+		return;
+
+	status_ = status;
+	std_msgs::msg::String msg;
+	msg.data = status_;
+	pub_status_->publish(msg);
+	RCLCPP_INFO(this->get_logger(), "VI status: %s", status_.c_str());
 }
 
 /*
@@ -349,6 +378,11 @@ void ViNode::decision(void)
 	vi_->setLocalWindow(x_, y_);
 
 	Action *a = vi_->posToAction(x_, y_, yaw_);
+	if(vi_->idling_) {
+		setStatus("idle");
+		pub_cmd_vel_->publish(cmd_vel);
+		return;
+	}
 	if(a != NULL){
 		cmd_vel.linear.x = a->delta_fw_;
 		cmd_vel.angular.z = a->delta_rot_/180*M_PI;

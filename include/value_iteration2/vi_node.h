@@ -5,6 +5,7 @@
 #define _VI_NODE_H__
 
 #include "rclcpp/rclcpp.hpp"
+#include <string>
 #include <vector>
 #include <value_iteration2/Action.h>
 #include "value_iteration2/ValueIteratorLocal.h"
@@ -12,6 +13,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "value_iteration2_astar_msgs/srv/get_path.hpp"
@@ -60,6 +62,7 @@ private:
 
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;
 	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_value_function_;
+	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_status_;
 	rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_laser_scan_;
 	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_local_costmap_;
 	rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr sub_goal_;
@@ -68,6 +71,7 @@ private:
         std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
 
 	void executeVi(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);
+	void setStatus(const std::string &status);
 	/*
 	tf::TransformListener tf_listener_;
 
@@ -87,7 +91,7 @@ private:
 
 	double x_, y_, yaw_;
 
-	//string status_;
+	std::string status_;
 	bool online_;
 	double local_cost_scale_;
 
