@@ -14,6 +14,7 @@
     local_cost_source: costmap #scan
     local_costmap_topic: /local_costmap/costmap
     local_cost_scale: 1.0
+    max_path_steps: 500
 #    action_list:
 #      - name: "forward"
 #        onestep_forward_m: "0.3"

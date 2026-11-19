@@ -13,6 +13,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
@@ -62,6 +63,7 @@ private:
 
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_cmd_vel_;
 	rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_value_function_;
+	rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_vi_path_;
 	rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_status_;
 	rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_laser_scan_;
 	rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_local_costmap_;
@@ -96,6 +98,7 @@ private:
 	double local_cost_scale_;
 
 	int cost_drawing_threshold_;
+	int max_path_steps_;
 
 	//additional astar
 	void astar(const geometry_msgs::msg::PoseStamped::ConstSharedPtr msg);

@@ -127,11 +127,14 @@ void ViNode::setCommunication(void)
 	declare_parameter("local_cost_source", "scan");
 	declare_parameter("local_costmap_topic", "/local_costmap/costmap");
 	declare_parameter("local_cost_scale", 1.0);
+	declare_parameter("max_path_steps", 500);
 	online_ = get_parameter("online").as_bool();
 	local_cost_scale_ = get_parameter("local_cost_scale").as_double();
+	max_path_steps_ = get_parameter("max_path_steps").as_int();
 	std::string local_cost_source = get_parameter("local_cost_source").as_string();
 	std::string local_costmap_topic = get_parameter("local_costmap_topic").as_string();
 	RCLCPP_INFO(this->get_logger(),"Online: %s", online_ ? "true" : "false");
+	RCLCPP_INFO(this->get_logger(),"max_path_steps: %d", max_path_steps_);
 
 	if(online_){
 		pub_cmd_vel_ = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 1);
@@ -160,6 +163,7 @@ void ViNode::setCommunication(void)
 	}
 
 	pub_value_function_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/value_function", 2);
+	pub_vi_path_ = create_publisher<nav_msgs::msg::Path>("/vi_path", 1);
 	auto costmap_qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
 	pub_cost_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("/costmap_2d", costmap_qos);
 	pub_status_ = create_publisher<std_msgs::msg::String>("/vi_status", costmap_qos);
@@ -359,7 +363,7 @@ void ViNode::decision(void)
 	cmd_vel.linear.x = 0.0;
 	cmd_vel.angular.z = 0.0;
 
-	if(not online_ or vi_->idling_) {
+	if(not online_) {
 		pub_cmd_vel_->publish(cmd_vel);
 		return; 
 	}
@@ -372,9 +376,24 @@ void ViNode::decision(void)
 		yaw_ = tf2::getYaw(trans.transform.rotation);
 	}catch(tf2::TransformException &e){
 		RCLCPP_WARN(this->get_logger(),"error in decision:%s", e.what());
+		pub_cmd_vel_->publish(cmd_vel);
+		return;
 	}
 
 	RCLCPP_INFO(this->get_logger(),"X: %lf, Y: %lf, T: %lf", x_, y_, yaw_);
+
+	nav_msgs::msg::Path path = vi_->extractPolicyPath(x_, y_, yaw_, max_path_steps_);
+	path.header.stamp = this->now();
+	for(auto &pose : path.poses)
+		pose.header.stamp = path.header.stamp;
+	pub_vi_path_->publish(path);
+
+	if(vi_->idling_) {
+		setStatus("idle");
+		pub_cmd_vel_->publish(cmd_vel);
+		return;
+	}
+
 	vi_->setLocalWindow(x_, y_);
 
 	Action *a = vi_->posToAction(x_, y_, yaw_);

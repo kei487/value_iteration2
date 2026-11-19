@@ -1,5 +1,6 @@
 #include "value_iteration2/ValueIterator.h"
 #include "rclcpp/rclcpp.hpp"
+#include <unordered_set>
 #if 0
 #include <grid_map_ros/grid_map_ros.hpp>
 #include <grid_map_msgs/msg/grid_map.hpp>
@@ -543,6 +544,86 @@ Action *ValueIterator::posToAction(double x, double y, double t_rad)
 
 	return NULL;
 
+}
+
+nav_msgs::msg::Path ValueIterator::extractPolicyPath(double x, double y, double t_rad, int max_steps)
+{
+	nav_msgs::msg::Path path;
+	path.header.frame_id = "map";
+
+	if(states_.empty() || max_steps <= 0)
+		return path;
+
+	int ix = (int)floor( (x - map_origin_x_)/xy_resolution_ );
+	int iy = (int)floor( (y - map_origin_y_)/xy_resolution_ );
+	int t = (int)(180 * t_rad / M_PI);
+	int it = (int)floor( ( (t + 360*100)%360 )/t_resolution_ );
+
+	if(not inMapArea(ix, iy))
+		return path;
+
+	auto appendPose = [&](double px, double py) {
+		geometry_msgs::msg::PoseStamped pose;
+		pose.header.frame_id = "map";
+		pose.pose.position.x = px;
+		pose.pose.position.y = py;
+		pose.pose.position.z = 0.0;
+		pose.pose.orientation.w = 1.0;
+		path.poses.push_back(pose);
+	};
+
+	// Start from the actual current position on the plane.
+	appendPose(x, y);
+
+	std::unordered_set<int> visited;
+	int index = toIndex(ix, iy, it);
+	visited.insert(index);
+
+	for(int step = 0; step < max_steps; ++step){
+		if(index < 0 || index >= (int)states_.size())
+			break;
+
+		auto &s = states_[index];
+		if(s.final_state_ || not s.free_ || s.optimal_action_ == NULL)
+			break;
+
+		auto &transitions = s.optimal_action_->_state_transitions[s.it_];
+		if(transitions.empty())
+			break;
+
+		const StateTransition *best = &transitions.front();
+		for(auto &tran : transitions){
+			if(tran._prob > best->_prob)
+				best = &tran;
+		}
+
+		ix = s.ix_ + best->_dix;
+		iy = s.iy_ + best->_diy;
+		it = (best->_dit + cell_num_t_) % cell_num_t_;
+
+		if(not inMapArea(ix, iy))
+			break;
+
+		index = toIndex(ix, iy, it);
+		if(index < 0 || index >= (int)states_.size())
+			break;
+
+		auto &next = states_[index];
+		if(not next.free_)
+			break;
+
+		if(not visited.insert(index).second)
+			break;
+
+		double px = map_origin_x_ + (ix + 0.5) * xy_resolution_;
+		double py = map_origin_y_ + (iy + 0.5) * xy_resolution_;
+		appendPose(px, py);
+
+		if(next.final_state_)
+			break;
+	}
+
+	return path;
 }
 
 /*

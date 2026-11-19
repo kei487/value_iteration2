@@ -52,7 +52,14 @@ def generate_launch_description():
             namespace='value_iteration2',
             executable='vi_planner',
             #output='screen'
-            parameters=[planner_config],
+            #parameters=[planner_config],
+            parameters=[{
+                'use_dijkstra': False,
+                'publish_searched_map': True,
+                'update_path_weight': 0.05,
+                'smooth_path_weight': 0.8,
+                'iteration_delta_threshold': 1.e-6,
+            }],
             #extra_arguments=[{'use_intra_process_comms': False}],
         )
 

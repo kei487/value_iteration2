@@ -60,11 +60,12 @@ void vi_planner::initSubscriber()
     initPlanner();
   };
 
+  /* /costmap_2d is latched (transient_local). Intra-process delivery rejects
+   * any durability other than volatile, and this node runs in a separate
+   * process from the publisher, so keep the subscription inter-process. */
   auto qos = rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable();
-  rclcpp::SubscriptionOptions options;
-  options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
   costmap_2d_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
-    "/costmap_2d", qos, costmap_2d_callback, options);
+    "/costmap_2d", qos, costmap_2d_callback);
 
   RCLCPP_INFO(this->get_logger(), "set subscriber!");
 }

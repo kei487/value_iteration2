@@ -42,6 +42,7 @@ public:
 	bool endOfTrial(void);
 	//bool arrived(void);
 	Action *posToAction(double x, double y, double t_rad);
+	nav_msgs::msg::Path extractPolicyPath(double x, double y, double t_rad, int max_steps);
 	//void setCalculated(void);
 	//bool isCalculated(void);
 /* initialization */
