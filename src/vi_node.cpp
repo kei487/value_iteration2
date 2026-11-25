@@ -389,7 +389,7 @@ void ViNode::decision(void)
 	pub_vi_path_->publish(path);
 
 	if(vi_->idling_) {
-		setStatus("idle");
+		// setStatus("idle");
 		pub_cmd_vel_->publish(cmd_vel);
 		return;
 	}
@@ -398,7 +398,7 @@ void ViNode::decision(void)
 
 	Action *a = vi_->posToAction(x_, y_, yaw_);
 	if(vi_->idling_) {
-		setStatus("idle");
+		// setStatus("idle");
 		pub_cmd_vel_->publish(cmd_vel);
 		return;
 	}
