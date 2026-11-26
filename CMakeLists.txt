@@ -33,6 +33,7 @@ ament_auto_add_executable(vi_planner
 
 install(TARGETS vi_node DESTINATION lib/${PROJECT_NAME})
 install(TARGETS vi_planner DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/fake_odom.py DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY maps DESTINATION share/${PROJECT_NAME})
